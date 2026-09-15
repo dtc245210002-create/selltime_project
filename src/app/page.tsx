@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { MobileShell } from "../components/MobileShell";
 import { RoleSwitcher } from "../components/RoleSwitcher";
 import { TimeSliderWidget } from "../components/TimeSliderWidget";
 import { ShiftCard } from "../components/ShiftCard";
-import { MyShiftsTab } from "../components/MyShiftsTab";
+import { MyShiftsTab, ShiftAttendanceStatus } from "../components/MyShiftsTab";
 import { MessagesTab } from "../components/MessagesTab";
 import { ProfileTab } from "../components/ProfileTab";
 import { EmployerDashboard } from "../components/EmployerDashboard";
 import { AuthModal } from "../components/AuthModal";
 import { AiCoachModal } from "../components/AiCoachModal";
+import { CheckinModal } from "../components/CheckinModal";
+import { CheckoutModal } from "../components/CheckoutModal";
 import {
   DEFAULT_FILTER_CRITERIA,
   INITIAL_SHIFTS,
@@ -29,6 +31,15 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
 
+  // State quản lý Checkin và Checkout Escrow
+  const [checkinShift, setCheckinShift] = useState<Shift | null>(null);
+  const [checkoutShift, setCheckoutShift] = useState<Shift | null>(null);
+  const [shiftStatuses, setShiftStatuses] = useState<Record<string, ShiftAttendanceStatus>>({
+    shift_sos_01: "APPLIED",
+  });
+  const [walletBalance, setWalletBalance] = useState<number>(350000);
+  const [trustBattery, setTrustBattery] = useState<number>(MOCK_CANDIDATE_PROFILE.trust_battery);
+
   // State vai trò hiện tại (Đồng bộ theo role của currentUser)
   const [currentRole, setCurrentRole] = useState<UserRole>("CANDIDATE");
   const [activeTab, setActiveTab] = useState("explore");
@@ -38,11 +49,23 @@ export default function Home() {
     DEFAULT_FILTER_CRITERIA
   );
 
-  // Danh sách ca làm việc (cho phép thêm mới từ vai trò Employer)
+  // Danh sách ca làm việc (khởi tạo từ mock, đồng bộ với API /api/shifts)
   const [shifts, setShifts] = useState<Shift[]>(INITIAL_SHIFTS);
 
-  // Quản lý ứng tuyển
-  const [appliedShiftIds, setAppliedShiftIds] = useState<string[]>([]);
+  // Nạp danh sách ca từ API nếu có kết nối
+  useEffect(() => {
+    fetch("/api/shifts")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setShifts(json.data);
+        }
+      })
+      .catch((err) => console.warn("Dùng danh sách ca dự phòng:", err));
+  }, []);
+
+  // Quản lý ứng tuyển (mặc định cho Huy đã ứng tuyển ca SOS của Chị Lan để demo nhanh)
+  const [appliedShiftIds, setAppliedShiftIds] = useState<string[]>(["shift_sos_01"]);
 
   // Khi chuyển vai trò qua RoleSwitcher
   const handleRoleChange = (newRole: UserRole) => {
@@ -78,12 +101,41 @@ export default function Home() {
     }
     if (!appliedShiftIds.includes(shiftId)) {
       setAppliedShiftIds((prev) => [...prev, shiftId]);
+      setShiftStatuses((prev) => ({ ...prev, [shiftId]: "APPLIED" }));
     }
   };
 
-  // Xử lý chủ quán đăng ca mới
-  const handlePostNewShift = (newShift: Shift) => {
+  // Xử lý chủ quán đăng ca mới: lưu local và gọi API backend
+  const handlePostNewShift = async (newShift: Shift) => {
     setShifts((prev) => [newShift, ...prev]);
+    try {
+      await fetch("/api/shifts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shift: newShift }),
+      });
+    } catch (e) {
+      console.warn("Không thể đồng bộ ca làm với backend API:", e);
+    }
+  };
+
+  // Xử lý Check-in thành công
+  const handleCheckinSuccess = (shiftId: string) => {
+    setShiftStatuses((prev) => ({
+      ...prev,
+      [shiftId]: "IN_PROGRESS",
+    }));
+  };
+
+  // Xử lý Checkout và giải ngân Escrow thành công
+  const handleConfirmCheckout = (shiftId: string, earnedAmount: number) => {
+    setShiftStatuses((prev) => ({
+      ...prev,
+      [shiftId]: "COMPLETED",
+    }));
+    setWalletBalance((prev) => prev + earnedAmount);
+    setTrustBattery((prev) => Math.min(100, prev + 2));
+    MOCK_CANDIDATE_PROFILE.trust_battery = Math.min(100, trustBattery + 2);
   };
 
   // Ca làm việc đã ứng tuyển
@@ -96,7 +148,7 @@ export default function Home() {
       <MobileShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        trustBattery={MOCK_CANDIDATE_PROFILE.trust_battery}
+        trustBattery={trustBattery}
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
@@ -190,7 +242,12 @@ export default function Home() {
 
             {activeTab === "my-shifts" && (
               <div className="max-w-2xl mx-auto w-full">
-                <MyShiftsTab appliedShifts={appliedShiftsList} />
+                <MyShiftsTab
+                  appliedShifts={appliedShiftsList}
+                  shiftStatuses={shiftStatuses}
+                  onStartCheckin={(s) => setCheckinShift(s)}
+                  onStartCheckout={(s) => setCheckoutShift(s)}
+                />
               </div>
             )}
 
@@ -205,6 +262,8 @@ export default function Home() {
                 <ProfileTab
                   user={currentUser || MOCK_CANDIDATE_USER}
                   profile={MOCK_CANDIDATE_PROFILE}
+                  walletBalance={walletBalance}
+                  onWithdrawFunds={(amt) => setWalletBalance(0)}
                 />
               </div>
             )}
@@ -229,6 +288,22 @@ export default function Home() {
             ...new Set([...MOCK_CANDIDATE_PROFILE.skills, ...newSkills]),
           ];
         }}
+      />
+
+      {/* MODAL CHECK-IN GPS GEOFENCING & QR CODE */}
+      <CheckinModal
+        isOpen={!!checkinShift}
+        onClose={() => setCheckinShift(null)}
+        shift={checkinShift}
+        onCheckinSuccess={handleCheckinSuccess}
+      />
+
+      {/* MODAL CHECKOUT HOÀN THÀNH CA & GIẢI NGÂN ESCROW */}
+      <CheckoutModal
+        isOpen={!!checkoutShift}
+        onClose={() => setCheckoutShift(null)}
+        shift={checkoutShift}
+        onConfirmCheckout={handleConfirmCheckout}
       />
     </>
   );

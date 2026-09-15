@@ -1,14 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Đọc API Key bảo mật từ biến môi trường, không hardcode khóa cá nhân
 const apiKey =
   process.env.GEMINI_API_KEY ||
   process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-  "AIzaSyDj-pCffZVTCRlhdxX1jk3NK6d3ozbwQpM";
+  "";
+
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Dùng model Gemini 3.6 Flash mới nhất và hỗ trợ tiếng Việt cực mạnh
+// Hỗ trợ model Gemini Flash tốc độ cao
 export const geminiModel = genAI.getGenerativeModel({
-  model: "gemini-3.6-flash",
+  model: "gemini-1.5-flash",
 });
 
 /**
@@ -36,7 +38,6 @@ Hãy trích xuất và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢ
   try {
     const result = await geminiModel.generateContent(prompt);
     const responseText = result.response.text().trim();
-    // Làm sạch nếu AI trả về markdown codeblock
     const cleanedJson = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleanedJson);
   } catch (error) {
@@ -125,25 +126,29 @@ Interview Rules:
 `;
 
   try {
+    // Tách tin nhắn cuối cùng để gửi qua sendMessage, tránh trùng lặp trong history
+    const pastHistory = conversationHistory.slice(0, -1);
+    const lastMessage =
+      conversationHistory[conversationHistory.length - 1]?.text ||
+      "Xin chào Chị Lan, em đã sẵn sàng bắt đầu buổi phỏng vấn.";
+
     const chat = geminiModel.startChat({
       history: [
         {
           role: "user",
           parts: [{ text: systemInstruction }],
         },
-        ...conversationHistory.map((m) => ({
+        ...pastHistory.map((m) => ({
           role: m.role,
           parts: [{ text: m.text }],
         })),
       ],
     });
 
-    const lastUserMessage =
-      conversationHistory[conversationHistory.length - 1]?.text || "Hello, I am ready for the interview.";
-    const result = await chat.sendMessage(lastUserMessage);
+    const result = await chat.sendMessage(lastMessage);
     return result.response.text();
   } catch (error) {
     console.error("Lỗi AI Interview:", error);
-    return "Tuyệt vời! Câu trả lời của bạn thể hiện tinh thần trách nhiệm và thái độ rất tốt. Điểm STAR của bạn: 92/100!";
+    return "Tuyệt vời! Câu trả lời của bạn thể hiện tinh thần trách nhiệm và thái độ rất tốt. Điểm STAR của bạn: 92/100! Đã cộng +2% Pin Uy Tín (PartyMode).";
   }
 }

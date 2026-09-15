@@ -22,7 +22,7 @@ import {
   MOCK_EMPLOYER_USER,
 } from "../application/store";
 import { rankShiftsForCandidate } from "../domain/matching-engine";
-import { CandidateFilterCriteria, Shift, User as UserType, UserRole } from "../domain/types";
+import { CandidateFilterCriteria, CandidateProfile, Shift, User as UserType, UserRole } from "../domain/types";
 import { Sparkles, Info, Bot } from "lucide-react";
 
 export default function Home() {
@@ -31,6 +31,11 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
 
+  // Quản lý hồ sơ ứng viên (Immutable State)
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
+    ...MOCK_CANDIDATE_PROFILE,
+  });
+
   // State quản lý Checkin và Checkout Escrow
   const [checkinShift, setCheckinShift] = useState<Shift | null>(null);
   const [checkoutShift, setCheckoutShift] = useState<Shift | null>(null);
@@ -38,7 +43,6 @@ export default function Home() {
     shift_sos_01: "APPLIED",
   });
   const [walletBalance, setWalletBalance] = useState<number>(350000);
-  const [trustBattery, setTrustBattery] = useState<number>(MOCK_CANDIDATE_PROFILE.trust_battery);
 
   // State vai trò hiện tại (Đồng bộ theo role của currentUser)
   const [currentRole, setCurrentRole] = useState<UserRole>("CANDIDATE");
@@ -88,10 +92,10 @@ export default function Home() {
     setCurrentUser(null);
   };
 
-  // Tính toán Matching Engine đa biến thời gian thực
+  // Tính toán Matching Engine đa biến thời gian thực dựa trên candidateProfile state
   const rankedShifts = useMemo(() => {
-    return rankShiftsForCandidate(shifts, MOCK_CANDIDATE_PROFILE, criteria);
-  }, [shifts, criteria]);
+    return rankShiftsForCandidate(shifts, candidateProfile, criteria);
+  }, [shifts, candidateProfile, criteria]);
 
   // Xử lý nộp đơn 1-chạm (Bắt buộc đăng nhập)
   const handleApply = (shiftId: string) => {
@@ -127,15 +131,25 @@ export default function Home() {
     }));
   };
 
-  // Xử lý Checkout và giải ngân Escrow thành công
+  // Xử lý Checkout và giải ngân Escrow thành công (cập nhật state an toàn)
   const handleConfirmCheckout = (shiftId: string, earnedAmount: number) => {
     setShiftStatuses((prev) => ({
       ...prev,
       [shiftId]: "COMPLETED",
     }));
     setWalletBalance((prev) => prev + earnedAmount);
-    setTrustBattery((prev) => Math.min(100, prev + 2));
-    MOCK_CANDIDATE_PROFILE.trust_battery = Math.min(100, trustBattery + 2);
+    setCandidateProfile((prev) => ({
+      ...prev,
+      trust_battery: Math.min(100, prev.trust_battery + 2),
+    }));
+  };
+
+  // Cập nhật kỹ năng từ AI Coach vào candidateProfile state
+  const handleUpdateCandidateSkills = (newSkills: string[]) => {
+    setCandidateProfile((prev) => ({
+      ...prev,
+      skills: [...new Set([...prev.skills, ...newSkills])],
+    }));
   };
 
   // Ca làm việc đã ứng tuyển
@@ -148,7 +162,7 @@ export default function Home() {
       <MobileShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        trustBattery={trustBattery}
+        trustBattery={candidateProfile.trust_battery}
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
@@ -261,7 +275,7 @@ export default function Home() {
               <div className="max-w-2xl mx-auto w-full">
                 <ProfileTab
                   user={currentUser || MOCK_CANDIDATE_USER}
-                  profile={MOCK_CANDIDATE_PROFILE}
+                  profile={candidateProfile}
                   walletBalance={walletBalance}
                   onWithdrawFunds={(amt) => setWalletBalance(0)}
                 />
@@ -282,15 +296,11 @@ export default function Home() {
       <AiCoachModal
         isOpen={isAiCoachOpen}
         onClose={() => setIsAiCoachOpen(false)}
-        candidateSkills={MOCK_CANDIDATE_PROFILE.skills}
-        onUpdateSkills={(newSkills) => {
-          MOCK_CANDIDATE_PROFILE.skills = [
-            ...new Set([...MOCK_CANDIDATE_PROFILE.skills, ...newSkills]),
-          ];
-        }}
+        candidateSkills={candidateProfile.skills}
+        onUpdateSkills={handleUpdateCandidateSkills}
       />
 
-      {/* MODAL CHECK-IN GPS GEOFENCING & QR CODE */}
+      {/* MODAL CHECK-IN GPS GEOFENCING & QR CODE KÈM PIN FALLBACK */}
       <CheckinModal
         isOpen={!!checkinShift}
         onClose={() => setCheckinShift(null)}

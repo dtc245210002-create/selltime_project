@@ -1,8 +1,10 @@
 import sql from "mssql";
 import { Shift, User, CandidateProfile, EmployerProfile } from "@/domain/types";
 
-// Cấu hình kết nối tới Microsoft SQL Server trên máy tính (LAPTOP-FLO3DB3M)
+// Cấu hình kết nối tới Microsoft SQL Server
 const sqlConfig: sql.config = {
+  user: process.env.MSSQL_USER || "sa",
+  password: process.env.MSSQL_PASSWORD || "",
   server: process.env.MSSQL_SERVER || "LAPTOP-FLO3DB3M",
   database: process.env.MSSQL_DATABASE || "SellTimeDB",
   options: {
@@ -10,10 +12,8 @@ const sqlConfig: sql.config = {
     trustServerCertificate: true,
     enableArithAbort: true,
   },
-  // Sử dụng Windows Authentication khi chạy trên máy local
-  driver: "msnodesqlv8",
-  connectionTimeout: 5000,
-  requestTimeout: 10000,
+  connectionTimeout: 4000,
+  requestTimeout: 8000,
 };
 
 let pool: sql.ConnectionPool | null = null;
@@ -23,18 +23,11 @@ export async function getDbConnection() {
     if (pool && pool.connected) {
       return pool;
     }
-    pool = await new sql.ConnectionPool({
-      server: process.env.MSSQL_SERVER || "localhost",
-      database: process.env.MSSQL_DATABASE || "SellTimeDB",
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-      },
-    }).connect();
+    pool = await new sql.ConnectionPool(sqlConfig).connect();
     return pool;
   } catch (error) {
-    // Không ném lỗi để tránh sập web khi chạy trên cloud Vercel
-    console.warn("Không thể kết nối SQL Server local, tự động dùng bộ nhớ đệm (Mock Store):", error);
+    // Graceful fallback khi chạy trên Vercel Cloud (không có kết nối tới máy laptop local)
+    console.warn("Không thể kết nối SQL Server local, tự động kích hoạt bộ nhớ đệm (Mock Store):", (error as any)?.message || error);
     return null;
   }
 }
@@ -136,4 +129,3 @@ export async function saveShiftToSql(shift: Shift): Promise<boolean> {
     return false;
   }
 }
-

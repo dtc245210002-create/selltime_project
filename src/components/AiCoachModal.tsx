@@ -17,6 +17,8 @@ import {
   Loader2,
   Languages,
   RotateCcw,
+  Keyboard,
+  Check,
 } from "lucide-react";
 
 interface AiCoachModalProps {
@@ -73,7 +75,7 @@ const LANGUAGES: LanguageOption[] = [
     flag: "🇰🇷",
     placeholder: "답변을 입력하거나 마이크를 눌러 음성으로 말씀하세요...",
     greeting:
-      "안녕하세요! The Cuppa Coffee 점주 란입니다. 오늘 저녁 파트타임 근무 적합성을 확인하기 위해 STAR 방식의 질문 3가지를 드리겠습니다!\n\n👉 질문 1: 저녁 8시 피크 시간대에 매장이 매우 혼잡한 상황에서, 음료가 15분 이상 늦어져 손님이 화를 내며 항의할 때 어떻게 대처하시겠습니까?",
+      "안녕하세요! The Cuppa Coffee 점주 란입니다. 오늘 저녁 파트타임 근무 적합성을 확인하기 위해 STAR 방식 của 질문 3가지를 드리겠습니다!\n\n👉 질문 1: 저녁 8시 피크 시간대에 매장이 매우 혼잡한 상황에서, 음료가 15분 이상 늦어져 손님이 화를 내며 항의할 때 어떻게 대처하시겠습니까?",
   },
 ];
 
@@ -87,6 +89,10 @@ export function AiCoachModal({
 
   // Ngôn ngữ phỏng vấn đã chọn (Mặc định Tiếng Việt)
   const [selectedLang, setSelectedLang] = useState<LanguageOption>(LANGUAGES[0]);
+
+  // Chế độ nhập liệu: Giọng nói (voice) hoặc Gõ phím (text chat fallback)
+  const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
+  const [hasSpeechSupport, setHasSpeechSupport] = useState<boolean>(true);
 
   // Messages Chat phỏng vấn
   const [messages, setMessages] = useState<{ role: "user" | "model"; text: string }[]>([
@@ -108,15 +114,24 @@ export function AiCoachModal({
   const [isAnalyzingCv, setIsAnalyzingCv] = useState(false);
   const [cvResult, setCvResult] = useState<any>(null);
 
-  // Load danh sách giọng đọc từ trình duyệt
+  // Kiểm tra hỗ trợ Web Speech API và load voices
   useEffect(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const loadVoices = () => {
-        const voices = window.speechSynthesis.getVoices();
-        setAvailableVoices(voices);
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+    if (typeof window !== "undefined") {
+      const speechAvailable =
+        "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+      setHasSpeechSupport(speechAvailable);
+      if (!speechAvailable) {
+        setInputMode("text"); // Tự động fallback sang gõ text trên Safari iOS / thiết bị không hỗ trợ
+      }
+
+      if ("speechSynthesis" in window) {
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          setAvailableVoices(voices);
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
     }
   }, []);
 
@@ -133,15 +148,12 @@ export function AiCoachModal({
 
   if (!isOpen) return null;
 
-  // ==========================================
-  // HỆ THỐNG PHÁT ÂM THANH NÂNG CAO (TTS)
-  // ==========================================
+  // Phát âm thanh TTS
   const speakText = (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    window.speechSynthesis.cancel(); // Dừng câu đang đọc cũ
+    window.speechSynthesis.cancel();
 
-    // Lọc lấy đoạn văn bản cần đọc (loại bỏ các ký tự icon và markdown)
     const cleanText = text
       .replace(/👉/g, "")
       .replace(/\*\*/g, "")
@@ -150,10 +162,9 @@ export function AiCoachModal({
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = selectedLang.code;
-    utterance.rate = 0.95; // Tốc độ vừa phải để phát âm rõ chữ
-    utterance.pitch = 1.05; // Giọng nữ nhẹ nhàng truyền cảm
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
 
-    // Tìm giọng đọc bản địa chuẩn nhất cho ngôn ngữ đã chọn
     const langPrefix = selectedLang.code.split("-")[0];
     const bestVoice =
       availableVoices.find(
@@ -183,16 +194,14 @@ export function AiCoachModal({
     }
   };
 
-  // ==========================================
-  // NHẬN DIỆN GIỌNG NÓI MICRO (STT)
-  // ==========================================
+  // Nhận diện giọng nói STT
   const toggleSpeechRecognition = () => {
     if (typeof window === "undefined") return;
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Trình duyệt chưa hỗ trợ nhận diện giọng nói. Vui lòng dùng Chrome hoặc Edge.");
+      setInputMode("text");
       return;
     }
 
@@ -202,7 +211,7 @@ export function AiCoachModal({
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = selectedLang.code; // Nhận diện theo đúng ngôn ngữ đã chọn
+    recognition.lang = selectedLang.code;
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -218,9 +227,7 @@ export function AiCoachModal({
     recognition.start();
   };
 
-  // ==========================================
-  // GỬI TIN NHẮN TỚI GEMINI AI
-  // ==========================================
+  // Gửi tin nhắn tới Gemini AI
   const handleSendInterview = async () => {
     if (!userInput.trim() || isAiReplying) return;
 
@@ -251,9 +258,7 @@ export function AiCoachModal({
     }
   };
 
-  // ==========================================
-  // PHÂN TÍCH CV
-  // ==========================================
+  // Phân tích CV
   const handleAnalyzeCv = async () => {
     if (!cvInputText.trim() || isAnalyzingCv) return;
     setIsAnalyzingCv(true);
@@ -302,7 +307,7 @@ export function AiCoachModal({
                   Sell Time AI Voice & Interview
                 </h2>
                 <span className="text-[10px] bg-purple-500/40 text-purple-200 px-2 py-0.5 rounded-full font-bold border border-purple-400/30">
-                  Gemini 3.6 Flash
+                  Gemini Flash STAR
                 </span>
               </div>
               <p className="text-xs text-indigo-200 mt-0.5">
@@ -322,7 +327,7 @@ export function AiCoachModal({
               }`}
             >
               <Mic className="w-3.5 h-3.5 text-purple-600" />
-              <span>Phỏng Vấn Đa Ngôn Ngữ</span>
+              <span>Phỏng Vấn STAR</span>
             </button>
             <button
               onClick={() => setActiveTab("cv")}
@@ -349,7 +354,7 @@ export function AiCoachModal({
               <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                   <Languages className="w-4 h-4 text-indigo-600" />
-                  <span>Chọn ngôn ngữ phỏng vấn:</span>
+                  <span>Ngôn ngữ:</span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1">
@@ -357,7 +362,7 @@ export function AiCoachModal({
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border ${
+                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border ${
                         selectedLang.code === lang.code
                           ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-[1.02]"
                           : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -370,21 +375,48 @@ export function AiCoachModal({
                 </div>
               </div>
 
-              {/* Băng thông tin trạng thái */}
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex items-center justify-between text-xs text-purple-950">
+              {/* Băng thông tin trạng thái & Chuyển đổi Voice vs Gõ phím */}
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex flex-wrap items-center justify-between text-xs text-purple-950 gap-2">
                 <div className="flex items-center gap-2">
                   <Bot className="w-4 h-4 text-purple-700" />
                   <span className="font-semibold">
                     Người phỏng vấn: Chị Lan AI ({selectedLang.name})
                   </span>
                 </div>
+
                 <div className="flex items-center gap-2">
+                  {/* Nút chuyển chế độ Gõ phím vs Micro */}
+                  <div className="flex bg-white rounded-lg p-0.5 border border-purple-200">
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("voice")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                        inputMode === "voice"
+                          ? "bg-purple-600 text-white"
+                          : "text-slate-600 hover:text-purple-600"
+                      }`}
+                    >
+                      <Mic className="w-3 h-3" /> Voice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("text")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                        inputMode === "text"
+                          ? "bg-purple-600 text-white"
+                          : "text-slate-600 hover:text-purple-600"
+                      }`}
+                    >
+                      <Keyboard className="w-3 h-3" /> Gõ phím
+                    </button>
+                  </div>
+
                   {isSpeaking && (
                     <button
                       onClick={stopSpeaking}
                       className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-rose-200"
                     >
-                      <VolumeX className="w-3 h-3" /> Dừng đọc
+                      <VolumeX className="w-3 h-3" /> Dừng
                     </button>
                   )}
                   <button
@@ -392,10 +424,20 @@ export function AiCoachModal({
                     className="text-[10px] text-slate-500 hover:text-indigo-600 flex items-center gap-0.5"
                     title="Bắt đầu lại buổi phỏng vấn"
                   >
-                    <RotateCcw className="w-3 h-3" /> Bắt đầu lại
+                    <RotateCcw className="w-3 h-3" />
                   </button>
                 </div>
               </div>
+
+              {/* Thông báo nếu chạy trên trình duyệt không có Web Speech API */}
+              {!hasSpeechSupport && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 text-[11px] text-amber-800 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>
+                    Trình duyệt của bạn đang bật <strong>Chế độ Gõ phím</strong> (Hỗ trợ tốt trên Safari iOS & Mọi máy tính).
+                  </span>
+                </div>
+              )}
 
               {/* Khu vực Chat Transcript */}
               <div className="flex-1 overflow-y-auto space-y-3 p-1">
@@ -420,7 +462,7 @@ export function AiCoachModal({
                         onClick={() => speakText(m.text)}
                         className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-1 mt-1 px-1 font-semibold transition-colors"
                       >
-                        <Volume2 className="w-3 h-3" /> Nghe AI phát âm
+                        <Volume2 className="w-3 h-3" /> Nghe phát âm
                       </button>
                     )}
                   </div>
@@ -429,39 +471,43 @@ export function AiCoachModal({
                 {isAiReplying && (
                   <div className="flex items-center gap-2 text-xs text-purple-600 p-2 bg-purple-50 rounded-xl w-fit">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Gemini 3.6 Flash đang phân tích câu trả lời...</span>
+                    <span>Gemini đang phân tích câu trả lời theo chuẩn STAR...</span>
                   </div>
                 )}
               </div>
 
-              {/* Hộp nhập liệu & Micro */}
+              {/* Hộp nhập liệu & Điều khiển gửi tin */}
               <div className="bg-white p-2.5 rounded-2xl border border-slate-200 flex items-center gap-2 shrink-0 shadow-sm">
-                <button
-                  type="button"
-                  onClick={toggleSpeechRecognition}
-                  className={`p-2.5 rounded-xl border transition-all ${
-                    isListening
-                      ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow-md"
-                      : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                  }`}
-                  title={
-                    isListening
-                      ? `Đang lắng nghe tiếng ${selectedLang.name}...`
-                      : `Bấm Micro để nói bằng ${selectedLang.name}`
-                  }
-                >
-                  {isListening ? (
-                    <MicOff className="w-4 h-4" />
-                  ) : (
-                    <Mic className="w-4 h-4" />
-                  )}
-                </button>
+                {inputMode === "voice" && hasSpeechSupport && (
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      isListening
+                        ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow-md"
+                        : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                    }`}
+                    title={
+                      isListening
+                        ? `Đang lắng nghe tiếng ${selectedLang.name}...`
+                        : `Bấm Micro để nói bằng ${selectedLang.name}`
+                    }
+                  >
+                    {isListening ? (
+                      <MicOff className="w-4 h-4" />
+                    ) : (
+                      <Mic className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
 
                 <input
                   type="text"
                   placeholder={
                     isListening
                       ? `Đang nghe tiếng ${selectedLang.name}...`
+                      : inputMode === "text"
+                      ? "Gõ câu trả lời theo cấu trúc Tình huống - Hành động - Kết quả..."
                       : selectedLang.placeholder
                   }
                   value={userInput}
@@ -530,7 +576,6 @@ export function AiCoachModal({
                     </span>
                   </div>
 
-                  {/* Kỹ năng được AI bóc tách */}
                   <div>
                     <span className="text-[11px] font-bold text-slate-600 block mb-1">
                       Kỹ năng trích xuất được (Tự động nạp vào hồ sơ):
@@ -550,7 +595,6 @@ export function AiCoachModal({
                     </div>
                   </div>
 
-                  {/* Đoạn giới thiệu được AI viết lại chuyên nghiệp */}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
                     <span className="font-bold text-slate-900 block mb-1">
                       Tóm tắt giới thiệu ấn tượng (AI Polished):
@@ -558,7 +602,6 @@ export function AiCoachModal({
                     <p className="italic">&ldquo;{cvResult.professional_summary}&rdquo;</p>
                   </div>
 
-                  {/* Lời khuyên nâng cấp CV */}
                   {cvResult.improvement_tips && (
                     <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
                       <span className="font-bold block flex items-center gap-1">

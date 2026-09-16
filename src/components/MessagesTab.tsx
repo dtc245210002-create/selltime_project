@@ -281,10 +281,10 @@ export function MessagesTab({
             <button
               type="button"
               onClick={() => setMobileView("list")}
-              className="p-1.5 -ml-1 text-slate-600 hover:bg-slate-100 rounded-xl flex items-center gap-1 text-xs font-bold transition-colors"
+              className="min-w-[44px] min-h-[44px] -ml-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl flex items-center justify-center text-xs font-bold transition-colors"
               title="Quay lại danh sách hội thoại"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
           )}
 
@@ -419,7 +419,7 @@ export function MessagesTab({
         <button
           type="submit"
           disabled={!inputVal.trim() || isSending}
-          className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center shrink-0"
+          className="w-11 h-11 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center shrink-0"
         >
           <Send className="w-4 h-4" />
         </button>
@@ -437,7 +437,7 @@ export function MessagesTab({
             <button
               type="button"
               onClick={() => setMobileView("chat")}
-              className="text-xs text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1.5"
+              className="min-h-[44px] px-2 -ml-2 text-xs text-indigo-600 hover:text-indigo-700 font-bold flex items-center gap-1.5 rounded-xl hover:bg-slate-100 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Quay lại trò chuyện</span>

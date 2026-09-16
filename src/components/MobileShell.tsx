@@ -327,16 +327,17 @@ export function MobileShell({
                 </span>
               </div>
               <p className="text-xs text-slate-600">
-                Mở Safari / Chrome trên điện thoại của bạn và gõ địa chỉ IP này:
+                Mở Safari / Chrome trên điện thoại hoặc trình duyệt khác và truy cập:
               </p>
               <div className="bg-white border border-slate-300 rounded-xl p-2.5 flex items-center justify-between font-mono text-xs font-bold text-indigo-600">
-                <span>http://192.168.1.249:3000</span>
+                <span className="truncate mr-2">{typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}</span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText("http://192.168.1.249:3000");
-                    alert("Đã sao chép link mạng LAN!");
+                    const url = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+                    navigator.clipboard.writeText(url);
+                    alert("Đã sao chép link truy cập: " + url);
                   }}
-                  className="text-[11px] font-sans font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md"
+                  className="text-[11px] font-sans font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md shrink-0"
                 >
                   Sao chép
                 </button>

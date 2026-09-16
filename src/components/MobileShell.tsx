@@ -80,7 +80,7 @@ export function MobileShell({
 
           {/* Controls: View Mode, PWA, User Login Session */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Toggle Giao diện Web / Mobile */}
+            {/* Toggle Giao diện Web / Mobile Preview */}
             <div className="bg-slate-800 p-1 rounded-xl flex items-center border border-slate-700">
               <button
                 onClick={() => setViewMode("desktop")}
@@ -89,10 +89,10 @@ export function MobileShell({
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
                 }`}
-                title="Xem giao diện chuẩn Web máy tính"
+                title="Xem trước chế độ Web màn hình rộng (Desktop Preview)"
               >
                 <Monitor className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Giao diện Web</span>
+                <span className="hidden md:inline">Xem trước Web</span>
               </button>
               <button
                 onClick={() => setViewMode("mobile")}
@@ -101,10 +101,10 @@ export function MobileShell({
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
                 }`}
-                title="Xem mô phỏng điện thoại di động"
+                title="Xem trước chế độ ứng dụng di động (Mobile App Preview)"
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Khung Điện thoại</span>
+                <span className="hidden md:inline">Xem trước Mobile</span>
               </button>
             </div>
 

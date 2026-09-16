@@ -89,6 +89,7 @@ export interface CandidateFilterCriteria {
   min_hourly_rate: number; // Mức lương sàn kỳ vọng
   selected_skills: string[];
   work_types: WorkType[];
+  search_keyword?: string;
 }
 
 export interface MatchBreakdown {

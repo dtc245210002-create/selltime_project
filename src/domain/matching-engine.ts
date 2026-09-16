@@ -204,7 +204,29 @@ export function rankShiftsForCandidate(
   candidateProfile: CandidateProfile,
   criteria: CandidateFilterCriteria
 ): ShiftWithMatch[] {
-  return shifts
+  let filtered = shifts;
+
+  // 1. Lọc theo từ khóa tìm kiếm (search_keyword)
+  if (criteria.search_keyword && criteria.search_keyword.trim().length > 0) {
+    const q = criteria.search_keyword.toLowerCase().trim();
+    filtered = filtered.filter((s) => {
+      const matchTitle = s.title.toLowerCase().includes(q);
+      const matchDesc = s.description.toLowerCase().includes(q);
+      const matchEmployer = s.employer_name.toLowerCase().includes(q);
+      const matchAddress = s.location_address.toLowerCase().includes(q);
+      const matchSkill = s.required_skills?.some((sk) =>
+        sk.toLowerCase().includes(q)
+      );
+      return matchTitle || matchDesc || matchEmployer || matchAddress || matchSkill;
+    });
+  }
+
+  // 2. Lọc theo hình thức công việc (work_types)
+  if (criteria.work_types && criteria.work_types.length > 0) {
+    filtered = filtered.filter((s) => criteria.work_types.includes(s.work_type));
+  }
+
+  return filtered
     .map((shift) => ({
       ...shift,
       match: evaluateShiftMatch(shift, candidateProfile, criteria),

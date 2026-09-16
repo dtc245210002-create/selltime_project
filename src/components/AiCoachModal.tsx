@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Keyboard,
   Check,
+  Copy,
 } from "lucide-react";
 
 interface AiCoachModalProps {
@@ -113,6 +114,24 @@ export function AiCoachModal({
   );
   const [isAnalyzingCv, setIsAnalyzingCv] = useState(false);
   const [cvResult, setCvResult] = useState<any>(null);
+  const [appliedSkillsSuccess, setAppliedSkillsSuccess] = useState(false);
+  const [copiedSummarySuccess, setCopiedSummarySuccess] = useState(false);
+
+  const handleApplySkills = () => {
+    if (cvResult?.extracted_skills && onUpdateSkills) {
+      onUpdateSkills(cvResult.extracted_skills);
+      setAppliedSkillsSuccess(true);
+      setTimeout(() => setAppliedSkillsSuccess(false), 2500);
+    }
+  };
+
+  const handleCopySummary = () => {
+    if (cvResult?.professional_summary) {
+      navigator.clipboard.writeText(cvResult.professional_summary);
+      setCopiedSummarySuccess(true);
+      setTimeout(() => setCopiedSummarySuccess(false), 2500);
+    }
+  };
 
   // Kiểm tra hỗ trợ Web Speech API và load voices
   useEffect(() => {
@@ -577,9 +596,28 @@ export function AiCoachModal({
                   </div>
 
                   <div>
-                    <span className="text-[11px] font-bold text-slate-600 block mb-1">
-                      Kỹ năng trích xuất được (Tự động nạp vào hồ sơ):
-                    </span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        Kỹ năng trích xuất được:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleApplySkills}
+                        className="text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-2xs"
+                      >
+                        {appliedSkillsSuccess ? (
+                          <>
+                            <Check className="w-3 h-3 text-white" />
+                            <span>Đã nạp vào Hồ sơ!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3" />
+                            <span>Áp dụng vào Hồ sơ</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       {cvResult.extracted_skills?.map(
                         (skill: string, idx: number) => (
@@ -595,10 +633,29 @@ export function AiCoachModal({
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
-                    <span className="font-bold text-slate-900 block mb-1">
-                      Tóm tắt giới thiệu ấn tượng (AI Polished):
-                    </span>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">
+                        Tóm tắt giới thiệu ấn tượng (AI Polished):
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopySummary}
+                        className="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                      >
+                        {copiedSummarySuccess ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span>Đã sao chép!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Sao chép tóm tắt</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <p className="italic">&ldquo;{cvResult.professional_summary}&rdquo;</p>
                   </div>
 

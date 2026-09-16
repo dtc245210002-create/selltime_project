@@ -1,8 +1,18 @@
-"use client";
-
 import React, { useState } from "react";
-import { Clock, Navigation, Zap, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
-import { CandidateFilterCriteria, ShiftPeriod } from "../domain/types";
+import {
+  Clock,
+  Navigation,
+  Zap,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Sparkles,
+  X,
+  Briefcase,
+  Bot,
+} from "lucide-react";
+import { CandidateFilterCriteria, ShiftPeriod, WorkType } from "../domain/types";
 
 interface TimeSliderWidgetProps {
   criteria: CandidateFilterCriteria;
@@ -16,12 +26,21 @@ export function TimeSliderWidget({
   matchCount,
 }: TimeSliderWidgetProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [aiPromptText, setAiPromptText] = useState("");
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   const periods: { id: ShiftPeriod; label: string; hours: string; icon: string }[] = [
     { id: "MORNING", label: "Sáng", hours: "06h - 12h", icon: "🌅" },
     { id: "AFTERNOON", label: "Chiều", hours: "12h - 18h", icon: "☀️" },
     { id: "EVENING", label: "Tối", hours: "18h - 22h", icon: "🌙" },
     { id: "NIGHT", label: "Đêm", hours: "22h - 06h", icon: "🌌" },
+  ];
+
+  const workTypeOptions: { id: WorkType | "ALL"; label: string }[] = [
+    { id: "ALL", label: "Tất cả hình thức" },
+    { id: "PART_TIME", label: "Bán thời gian" },
+    { id: "GIG", label: "Thời vụ / Gig" },
   ];
 
   const togglePeriod = (p: ShiftPeriod) => {
@@ -36,14 +55,75 @@ export function TimeSliderWidget({
     onChange({ ...criteria, selected_periods: updated });
   };
 
+  const handleWorkTypeChange = (type: WorkType | "ALL") => {
+    if (type === "ALL") {
+      onChange({ ...criteria, work_types: [] });
+    } else {
+      onChange({ ...criteria, work_types: [type] });
+    }
+  };
+
+  // Trợ lý AI NLP Lọc tự nhiên ("Tôi rảnh tối, biết pha chế...")
+  const handleAiFilter = (promptToProcess?: string) => {
+    const text = (promptToProcess || aiPromptText).toLowerCase().trim();
+    if (!text) return;
+
+    const detectedPeriods: ShiftPeriod[] = [];
+    if (text.includes("sáng") || text.includes("morning") || text.includes("trưa")) {
+      detectedPeriods.push("MORNING");
+    }
+    if (text.includes("chiều") || text.includes("afternoon")) {
+      detectedPeriods.push("AFTERNOON");
+    }
+    if (text.includes("tối") || text.includes("evening") || text.includes("đêm")) {
+      detectedPeriods.push("EVENING");
+    }
+    if (text.includes("khuya") || text.includes("đêm muộn")) {
+      detectedPeriods.push("NIGHT");
+    }
+
+    // Trích xuất từ khóa ngành nghề
+    let keyword = "";
+    if (text.includes("pha chế") || text.includes("barista") || text.includes("cà phê") || text.includes("coffee")) {
+      keyword = "Pha chế";
+    } else if (text.includes("phục vụ") || text.includes("chạy bàn") || text.includes("bàn")) {
+      keyword = "Phục vụ";
+    } else if (text.includes("bảo vệ") || text.includes("giữ xe")) {
+      keyword = "Bảo vệ";
+    } else if (text.includes("thu ngân") || text.includes("bán hàng") || text.includes("order")) {
+      keyword = "Thu ngân";
+    } else if (text.includes("tnut") || text.includes("kỹ thuật công nghiệp")) {
+      keyword = "TNUT";
+    }
+
+    const updatedPeriods = detectedPeriods.length > 0 ? detectedPeriods : criteria.selected_periods;
+
+    onChange({
+      ...criteria,
+      selected_periods: updatedPeriods,
+      search_keyword: keyword || (text.length <= 25 ? text : ""),
+    });
+
+    const periodNames = updatedPeriods.map((p) => {
+      if (p === "MORNING") return "Sáng";
+      if (p === "AFTERNOON") return "Chiều";
+      if (p === "EVENING") return "Tối";
+      return "Đêm";
+    }).join(", ");
+
+    setAiFeedback(
+      `✨ AI đã áp dụng: Khung giờ [${periodNames}]${keyword ? ` • Từ khóa [${keyword}]` : ""}`
+    );
+  };
+
   return (
-    <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 rounded-b-[28px] shadow-lg relative overflow-hidden">
+    <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white p-5 rounded-b-[28px] shadow-lg relative overflow-hidden space-y-3.5">
       {/* Background Decorative Circles */}
       <div className="absolute -right-10 -top-10 w-36 h-36 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
       <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-xl pointer-events-none" />
 
       {/* Header Catchphrase */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <div>
           <span className="text-[11px] uppercase tracking-wider font-semibold text-indigo-200 bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-md">
             ⚡ Time-First Search UX
@@ -54,8 +134,132 @@ export function TimeSliderWidget({
         </div>
       </div>
 
+      {/* Ô TÌM KIẾM TỪ KHÓA & NÚT AI */}
+      <div className="space-y-2">
+        <div className="relative flex items-center">
+          <Search className="w-4 h-4 text-indigo-200 absolute left-3 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Tìm theo chức danh, địa điểm, tên quán..."
+            value={criteria.search_keyword || ""}
+            onChange={(e) =>
+              onChange({ ...criteria, search_keyword: e.target.value })
+            }
+            className="w-full bg-white/10 text-white placeholder-indigo-200/70 text-xs rounded-xl pl-9 pr-8 py-2 border border-white/20 focus:outline-none focus:bg-white/20 focus:border-white/40 transition-all"
+          />
+          {criteria.search_keyword && (
+            <button
+              onClick={() => onChange({ ...criteria, search_keyword: "" })}
+              className="absolute right-2.5 p-1 text-indigo-200 hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Nút bật Lọc thông minh bằng AI (Natural Language Filter) */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowAiPrompt(!showAiPrompt)}
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 hover:text-amber-200 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{showAiPrompt ? "Thu gọn Lọc AI" : "✨ Lọc bằng ngôn ngữ tự nhiên (AI)"}</span>
+          </button>
+
+          {/* Tag hình thức công việc */}
+          <div className="flex items-center gap-1">
+            {workTypeOptions.map((opt) => {
+              const isSelected =
+                (opt.id === "ALL" && (!criteria.work_types || criteria.work_types.length === 0)) ||
+                (criteria.work_types && criteria.work_types.includes(opt.id as WorkType));
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleWorkTypeChange(opt.id)}
+                  className={`text-[10px] font-medium px-2 py-0.5 rounded-lg border transition-all ${
+                    isSelected
+                      ? "bg-amber-400 text-indigo-950 border-amber-300 font-bold shadow-xs"
+                      : "bg-white/10 text-white/80 border-white/10 hover:bg-white/20"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Khung nhập liệu AI tự nhiên */}
+        {showAiPrompt && (
+          <div className="bg-black/30 border border-amber-400/40 rounded-xl p-3 space-y-2 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="VD: Em rảnh tối, biết pha chế cà phê gần TNUT..."
+                value={aiPromptText}
+                onChange={(e) => setAiPromptText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAiFilter()}
+                className="flex-1 bg-white/10 text-white placeholder-indigo-200/60 text-xs rounded-lg px-2.5 py-1.5 border border-white/20 focus:outline-none focus:ring-1 focus:ring-amber-400"
+              />
+              <button
+                type="button"
+                onClick={() => handleAiFilter()}
+                className="bg-amber-400 hover:bg-amber-500 text-indigo-950 font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1 shrink-0 transition-all active:scale-95"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Lọc AI</span>
+              </button>
+            </div>
+
+            {/* Gợi ý mẫu 1-chạm */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[10px] text-indigo-200">Gợi ý:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiPromptText("Rảnh tối, pha chế The Cuppa");
+                  handleAiFilter("Rảnh tối, pha chế The Cuppa");
+                }}
+                className="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 px-2 py-0.5 rounded-md transition-colors"
+              >
+                🌙 Tối • Pha chế
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiPromptText("Rảnh sáng, phục vụ bàn gần TNUT");
+                  handleAiFilter("Rảnh sáng, phục vụ bàn gần TNUT");
+                }}
+                className="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 px-2 py-0.5 rounded-md transition-colors"
+              >
+                🌅 Sáng • Phục vụ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiPromptText("Rảnh chiều, làm thu ngân Circle K");
+                  handleAiFilter("Rảnh chiều, làm thu ngân Circle K");
+                }}
+                className="text-[10px] bg-white/10 hover:bg-white/20 text-amber-200 px-2 py-0.5 rounded-md transition-colors"
+              >
+                ☀️ Chiều • Thu ngân
+              </button>
+            </div>
+
+            {aiFeedback && (
+              <p className="text-[10px] font-semibold text-emerald-300 pt-1">
+                {aiFeedback}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Main Big Hour Display & Slider */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 mb-4">
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
         <div className="flex justify-between items-baseline mb-2">
           <span className="text-sm text-indigo-100 font-medium">Quỹ thời gian rảnh:</span>
           <div className="flex items-baseline gap-1">

@@ -195,12 +195,13 @@ export default function Home() {
                   appliedCandidateIds={appliedShiftIds}
                   candidateUser={MOCK_CANDIDATE_USER}
                   onPostNewShift={handlePostNewShift}
+                  onNavigateToMessages={() => setActiveTab("messages")}
                 />
               </div>
             )}
 
             {activeTab === "messages" && (
-              <div className="max-w-2xl mx-auto w-full h-[650px] lg:h-[750px]">
+              <div className="w-full h-[700px] lg:h-[800px]">
                 <MessagesTab
                   currentUser={currentUser || MOCK_EMPLOYER_USER}
                   currentRole={currentRole}
@@ -296,7 +297,7 @@ export default function Home() {
             )}
 
             {activeTab === "messages" && (
-              <div className="max-w-2xl mx-auto w-full h-[650px] lg:h-[750px]">
+              <div className="w-full h-[700px] lg:h-[800px]">
                 <MessagesTab
                   currentUser={currentUser || MOCK_CANDIDATE_USER}
                   currentRole={currentRole}

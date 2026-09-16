@@ -20,6 +20,7 @@ import {
   Store,
 } from "lucide-react";
 import { User as UserType } from "../domain/types";
+import { useViewMode } from "./ViewModeContext";
 
 interface MobileShellProps {
   children: React.ReactNode;
@@ -41,7 +42,7 @@ export function MobileShell({
   onLogout,
 }: MobileShellProps) {
   const [currentTime] = useState("19:42");
-  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
+  const { viewMode, setViewMode } = useViewMode();
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   const tabs = [

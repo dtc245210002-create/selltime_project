@@ -26,8 +26,18 @@ import {
 import { rankShiftsForCandidate } from "../domain/matching-engine";
 import { CandidateFilterCriteria, CandidateProfile, Shift, User as UserType, UserRole } from "../domain/types";
 import { Sparkles, Info, Bot } from "lucide-react";
+import { ViewModeProvider, useViewMode } from "../components/ViewModeContext";
 
 export default function Home() {
+  return (
+    <ViewModeProvider>
+      <HomeContent />
+    </ViewModeProvider>
+  );
+}
+
+function HomeContent() {
+  const { isMobile } = useViewMode();
   // Quản lý phiên đăng nhập (Session)
   const [currentUser, setCurrentUser] = useState<UserType | null>(MOCK_CANDIDATE_USER);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -201,7 +211,7 @@ export default function Home() {
             )}
 
             {activeTab === "messages" && (
-              <div className="w-full h-[700px] lg:h-[800px]">
+              <div className={`w-full ${isMobile ? "h-[640px]" : "h-[750px] max-w-7xl mx-auto"}`}>
                 <MessagesTab
                   currentUser={currentUser || MOCK_EMPLOYER_USER}
                   currentRole={currentRole}
@@ -222,10 +232,10 @@ export default function Home() {
           /* NỘI DUNG VAI TRÒ SINH VIÊN (CANDIDATE) THEO 4 TAB */
           <>
             {activeTab === "explore" && (
-              <div className="flex flex-col lg:flex-row gap-6 p-0 lg:p-6">
+              <div className={`flex ${isMobile ? "flex-col p-0 gap-3" : "flex-row gap-6 p-6"}`}>
                 {/* CỘT TRÁI: Widget Lọc Thời Gian Rảnh (Time-First Search Core) */}
-                <div className="w-full lg:w-[380px] shrink-0">
-                  <div className="lg:sticky lg:top-24 rounded-none lg:rounded-3xl overflow-hidden shadow-sm">
+                <div className={`w-full ${isMobile ? "" : "w-[380px] shrink-0"}`}>
+                  <div className={`${isMobile ? "rounded-none" : "sticky top-24 rounded-3xl"} overflow-hidden shadow-sm`}>
                     <TimeSliderWidget
                       criteria={criteria}
                       onChange={setCriteria}
@@ -235,7 +245,7 @@ export default function Home() {
                 </div>
 
                 {/* CỘT PHẢI: Feed Danh Sách Ca Làm Khớp Nối Đa Biến */}
-                <div className="flex-1 p-4 lg:p-0 space-y-4">
+                <div className={`flex-1 ${isMobile ? "p-3" : "p-0"} space-y-4`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-indigo-600" />
@@ -297,7 +307,7 @@ export default function Home() {
             )}
 
             {activeTab === "messages" && (
-              <div className="w-full h-[700px] lg:h-[800px]">
+              <div className={`w-full ${isMobile ? "h-[640px]" : "h-[750px] max-w-7xl mx-auto"}`}>
                 <MessagesTab
                   currentUser={currentUser || MOCK_CANDIDATE_USER}
                   currentRole={currentRole}

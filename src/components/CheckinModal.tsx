@@ -145,26 +145,26 @@ export function CheckinModal({
   const isWithinGeofence = distanceMeters <= 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
+      <div className="bg-slate-900 w-full max-w-md rounded-xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-violet-700 text-white p-4.5 px-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-md">
-              <QrCode className="w-5 h-5 text-white" />
+        <div className="bg-slate-900 border-b border-slate-800 p-4 px-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <QrCode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm sm:text-base leading-snug">
+              <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
                 Check-in Bắt Đầu Ca Làm
               </h3>
-              <p className="text-[11px] text-indigo-100/90 font-medium">
+              <p className="text-xs text-slate-400">
                 Xác thực hiện diện tại cơ sở để kích hoạt Escrow
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-md bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -173,47 +173,47 @@ export function CheckinModal({
         {/* Modal Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
           {/* Thông tin ca làm */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">
                 {shift.employer_name}
               </span>
-              <span className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60 font-mono">
                 Lương: {shift.total_budget.toLocaleString("vi-VN")} đ
               </span>
             </div>
-            <h4 className="font-bold text-slate-800 text-sm">{shift.title}</h4>
-            <p className="text-xs text-slate-500 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <h4 className="font-bold text-white text-sm">{shift.title}</h4>
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
               <span className="truncate">{shift.location_address}</span>
             </p>
           </div>
 
           {/* CHỌN PHƯƠNG THỨC CHECK-IN (GPS & QR vs OTP TẠI QUẦY) */}
-          <div className="flex p-1 bg-slate-100 rounded-xl">
+          <div className="flex p-1 bg-slate-950 border border-slate-800 rounded-lg">
             <button
               type="button"
               onClick={() => setCheckinMethod("GPS_QR")}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 ${
                 checkinMethod === "GPS_QR"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Navigation className="w-3.5 h-3.5" />
+              <Navigation className="w-3.5 h-3.5 text-purple-400" />
               <span>GPS & Quét QR</span>
             </button>
             <button
               type="button"
               onClick={() => setCheckinMethod("OTP")}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 ${
                 checkinMethod === "OTP"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Mã PIN Tại Quầy (Dự phòng)</span>
+              <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+              <span>Mã PIN Tại Quầy</span>
             </button>
           </div>
 
@@ -221,41 +221,41 @@ export function CheckinModal({
             /* =================== PHƯƠNG THỨC 1: GPS & QUÉT MÃ QR =================== */
             <>
               {/* BƯỚC 1: XÁC THỰC GPS GEOFENCING */}
-              <div className="border border-slate-200 rounded-2xl p-3.5 space-y-2.5 bg-white">
+              <div className="border border-slate-800 rounded-lg p-3.5 space-y-2.5 bg-slate-950">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Navigation className="w-4 h-4 text-indigo-600" />
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Navigation className="w-4 h-4 text-purple-400" />
                     Bước 1: Kiểm tra vị trí (Geofencing 100m)
                   </span>
                   <span
-                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
                       isWithinGeofence
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                        ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/60"
+                        : "bg-amber-950/60 text-amber-400 border border-amber-800/60"
                     }`}
                   >
-                    {isWithinGeofence ? "✅ Trong phạm vi" : "⚠️ Ngoài phạm vi"}
+                    {isWithinGeofence ? "✓ Trong phạm vi" : "⚠ Ngoài phạm vi"}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs space-y-1">
+                <div className="bg-slate-900 rounded-md p-3 border border-slate-800/80 text-xs space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Khoảng cách tới quán:</span>
+                    <span className="text-slate-400">Khoảng cách tới quán:</span>
                     <span
-                      className={`font-black ${
-                        isWithinGeofence ? "text-emerald-600" : "text-amber-600"
+                      className={`font-mono font-bold ${
+                        isWithinGeofence ? "text-emerald-400" : "text-amber-400"
                       }`}
                     >
                       {distanceMeters} mét
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Bán kính cho phép:</span>
-                    <span className="font-bold text-slate-700">&le; 100 mét</span>
+                    <span className="text-slate-400">Bán kính cho phép:</span>
+                    <span className="font-mono font-medium text-slate-300">&le; 100 mét</span>
                   </div>
                   {gpsError && (
-                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg mt-1">
-                      <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
+                    <div className="p-2 bg-amber-950/50 border border-amber-800/60 rounded-md mt-1">
+                      <p className="text-[11px] text-amber-300 font-medium leading-relaxed">
                         {gpsError}
                       </p>
                     </div>
@@ -268,15 +268,15 @@ export function CheckinModal({
                     type="button"
                     onClick={handleGetRealGps}
                     disabled={isGpsLoading}
-                    className="flex-1 text-[11px] font-bold py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 text-xs font-medium py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md border border-slate-700 transition-colors flex items-center justify-center gap-1.5"
                   >
-                    <MapPin className="w-3 h-3 text-indigo-600" />
+                    <MapPin className="w-3.5 h-3.5 text-purple-400" />
                     {isGpsLoading ? "Đang dò GPS..." : "Lấy GPS thiết bị"}
                   </button>
                   <button
                     type="button"
                     onClick={handleSimulateAtVenue}
-                    className="flex-1 text-[11px] font-bold py-1.5 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl transition-colors border border-indigo-200/60"
+                    className="flex-1 text-xs font-medium py-1.5 px-2.5 bg-purple-950/50 hover:bg-purple-900/50 text-purple-300 rounded-md border border-purple-800/50 transition-colors"
                   >
                     Mô phỏng tại quán (~20m)
                   </button>
@@ -284,26 +284,26 @@ export function CheckinModal({
               </div>
 
               {/* BƯỚC 2: QUÉT MÃ QR TẠI QUẦY */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-900 text-white space-y-3 relative overflow-hidden text-center">
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <span className="font-bold flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-indigo-400" />
-                    Bước 2: Quét mã QR tại quầy thu ngân
+              <div className="border border-slate-800 rounded-lg p-4 bg-slate-950 text-white space-y-3 relative overflow-hidden text-center">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-bold text-white flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-purple-400" />
+                    Bước 2: Quét mã QR tại quầy
                   </span>
-                  <span className="text-[10px] bg-slate-800 text-indigo-300 px-2 py-0.5 rounded">
+                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
                     Live Scanner
                   </span>
                 </div>
 
                 {/* Khung máy quét viewfinder */}
-                <div className="relative mx-auto w-44 h-44 border-2 border-indigo-400/60 rounded-2xl flex items-center justify-center bg-slate-950/60 overflow-hidden">
-                  <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-indigo-400" />
-                  <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-indigo-400" />
-                  <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-indigo-400" />
-                  <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-indigo-400" />
+                <div className="relative mx-auto w-44 h-44 border-2 border-purple-500/40 rounded-lg flex items-center justify-center bg-slate-900 overflow-hidden">
+                  <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-purple-400" />
+                  <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-purple-400" />
+                  <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-purple-400" />
+                  <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-purple-400" />
 
                   {isScanning && (
-                    <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-bounce shadow-lg shadow-cyan-400/50" />
+                    <div className="absolute inset-x-0 h-0.5 bg-purple-400 animate-bounce shadow-md shadow-purple-400/50" />
                   )}
 
                   {scanSuccess ? (
@@ -315,9 +315,9 @@ export function CheckinModal({
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <QrCode className="w-14 h-14 text-indigo-400 opacity-80" />
-                      <span className="text-[10px] text-slate-400">
-                        Hướng camera vào mã QR của chủ quán
+                      <QrCode className="w-12 h-12 text-purple-400/80" />
+                      <span className="text-[11px] text-slate-400">
+                        Hướng camera vào mã QR tại quầy
                       </span>
                     </div>
                   )}
@@ -326,12 +326,12 @@ export function CheckinModal({
                 <button
                   onClick={handleScanQr}
                   disabled={isScanning || scanSuccess || !isWithinGeofence}
-                  className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md ${
+                  className={`w-full py-2.5 rounded-md font-semibold text-xs flex items-center justify-center gap-2 transition-colors ${
                     !isWithinGeofence
-                      ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
                       : isScanning
-                      ? "bg-indigo-700 text-white animate-pulse"
-                      : "bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white active:scale-98"
+                      ? "bg-purple-700 text-white animate-pulse"
+                      : "bg-purple-600 hover:bg-purple-500 text-white active:scale-98"
                   }`}
                 >
                   {isScanning ? (
@@ -344,7 +344,7 @@ export function CheckinModal({
                       <span>
                         {!isWithinGeofence
                           ? "Cần đến gần quán < 100m để quét QR"
-                          : "Bấm Quét Mã QR Check-in Ngay"}
+                          : "Bấm Quét Mã QR Check-in"}
                       </span>
                     </>
                   )}
@@ -353,33 +353,33 @@ export function CheckinModal({
             </>
           ) : (
             /* =================== PHƯƠNG THỨC 2: FALLBACK MÃ PIN OTP TẠI QUẦY =================== */
-            <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3.5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="border border-slate-800 rounded-lg p-4 bg-slate-950 space-y-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center">
                   <KeyRound className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">
+                  <h4 className="text-xs font-bold text-white">
                     Xác Thực Qua Mã PIN Ca Làm
                   </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Dành cho trường hợp mất sóng GPS, điện thoại không có camera
+                  <p className="text-[11px] text-slate-400">
+                    Dành cho trường hợp mất sóng GPS hoặc thiết bị không có camera
                   </p>
                 </div>
               </div>
 
-              <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900">
+              <div className="bg-slate-900 border border-slate-800 rounded-md p-3 text-xs text-slate-300">
                 <span>
                   Hỏi nhân viên thu ngân hoặc chủ quán mã PIN 4 số của ca làm này:
                 </span>
-                <span className="block font-bold text-indigo-700 mt-1">
-                  💡 Mã PIN mặc định: {VENUE_PIN}
+                <span className="block font-mono font-bold text-purple-400 mt-1">
+                  Mã PIN mặc định: {VENUE_PIN}
                 </span>
               </div>
 
               <form onSubmit={handleVerifyOtp} className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  <label className="text-xs font-medium text-slate-300 block mb-1.5">
                     Nhập mã PIN 4 số:
                   </label>
                   <input
@@ -388,25 +388,25 @@ export function CheckinModal({
                     value={otpValue}
                     onChange={(e) => setOtpValue(e.target.value)}
                     placeholder="8866"
-                    className="w-full text-center text-xl tracking-[0.5em] font-mono font-black py-2.5 border-2 border-indigo-200 rounded-xl focus:border-indigo-600 focus:outline-none bg-slate-50"
+                    className="w-full text-center text-xl tracking-[0.5em] font-mono font-bold py-2.5 border border-slate-700 rounded-md focus:border-purple-500 focus:outline-none bg-slate-900 text-white"
                   />
                 </div>
 
                 {otpError && (
-                  <p className="text-xs text-rose-600 font-medium text-center">
+                  <p className="text-xs text-rose-400 font-medium text-center">
                     {otpError}
                   </p>
                 )}
 
                 {otpSuccess ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-center gap-2 text-emerald-700 font-bold text-xs">
+                  <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 rounded-md flex items-center justify-center gap-2 text-emerald-400 font-semibold text-xs">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Mã PIN chính xác! Đang bắt đầu ca...</span>
                   </div>
                 ) : (
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-md active:scale-98 flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md font-semibold text-xs transition-colors active:scale-98 flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     <span>Xác Thực Check-in Bằng PIN</span>
@@ -417,12 +417,14 @@ export function CheckinModal({
           )}
 
           {/* Quy định bảo đảm Escrow */}
-          <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2.5 flex items-center gap-2 text-[11px] text-emerald-900">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center gap-2.5 text-xs text-slate-400">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
               Ngay sau khi check-in, đồng hồ tính giờ kích hoạt. Lương{" "}
-              <strong>{shift.total_budget.toLocaleString("vi-VN")} đ</strong>{" "}
-              được bảo lưu trên hệ thống Escrow.
+              <strong className="text-emerald-400 font-mono font-bold">
+                {shift.total_budget.toLocaleString("vi-VN")} đ
+              </strong>{" "}
+              được bảo lưu trên hệ thống Escrow an toàn.
             </span>
           </div>
         </div>

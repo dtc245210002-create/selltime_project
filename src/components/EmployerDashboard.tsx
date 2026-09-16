@@ -9,18 +9,15 @@ import {
   CheckCircle2,
   Wallet,
   Clock,
-  MapPin,
-  Sparkles,
   QrCode,
   Calendar,
   History,
-  Check,
   XCircle,
   MessageSquare,
   KeyRound,
   ShieldCheck,
   Copy,
-  ExternalLink,
+  X,
 } from "lucide-react";
 import { Shift, User, ShiftPeriod } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
@@ -107,13 +104,13 @@ export function EmployerDashboard({
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-3.5 max-w-3xl mx-auto">
       {/* Employer Top Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-md border border-slate-800">
+      <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 shadow-flat">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
-              <Building2 className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-purple-400">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white">The Cuppa Coffee & Tea</h2>
@@ -122,42 +119,40 @@ export function EmployerDashboard({
               </span>
             </div>
           </div>
-          <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-            Doanh nghiệp chuẩn
+          <span className="text-[10px] font-medium bg-slate-950 text-emerald-400 border border-slate-800 px-2 py-0.5 rounded-md">
+            Doanh nghiệp eKYC
           </span>
         </div>
 
         {/* Escrow Balance Preview */}
-        <div className="bg-white/10 rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs text-slate-300">Số dư ký quỹ Escrow PayOS:</span>
+            <span className="text-xs text-slate-400">Số dư ký quỹ Escrow:</span>
+            <span className="text-sm font-bold font-mono text-emerald-400">1.250.000 đ</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-emerald-400">1.250.000 đ</span>
-            <button
-              onClick={() => {
-                setQrAmount(500000);
-                setQrContent("NAP QUY ESCROW THE CUPPA");
-                setShowQrModal(true);
-              }}
-              className="text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded-lg flex items-center gap-1 transition-all"
-            >
-              <QrCode className="w-3 h-3" />
-              <span>Nạp QR</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setQrAmount(500000);
+              setQrContent("NAP QUY ESCROW THE CUPPA");
+              setShowQrModal(true);
+            }}
+            className="text-[11px] font-medium bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Nạp QR</span>
+          </button>
         </div>
       </div>
 
       {/* 4 SUB-TABS NAVIGATION BAR */}
-      <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs flex items-center gap-1 overflow-x-auto">
+      <div className="bg-slate-950 rounded-lg p-1 border border-slate-800 flex items-center gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveSubTab("active_shifts")}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0 ${
             activeSubTab === "active_shifts"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              ? "bg-slate-800 text-white"
+              : "text-slate-400 hover:text-slate-200"
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
@@ -166,97 +161,93 @@ export function EmployerDashboard({
 
         <button
           onClick={() => setActiveSubTab("new_candidates")}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 relative ${
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0 relative ${
             activeSubTab === "new_candidates"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              ? "bg-slate-800 text-white"
+              : "text-slate-400 hover:text-slate-200"
           }`}
         >
           <Users className="w-3.5 h-3.5" />
           <span>Ứng viên mới</span>
           {appliedCandidateIds.length > 0 && !approvedCandidate && (
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
           )}
         </button>
 
         <button
           onClick={() => setActiveSubTab("today_roster")}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0 ${
             activeSubTab === "today_roster"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              ? "bg-slate-800 text-white"
+              : "text-slate-400 hover:text-slate-200"
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          <span>Lịch làm việc hôm nay</span>
+          <span>Lịch hôm nay</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("history")}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0 ${
             activeSubTab === "history"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              ? "bg-slate-800 text-white"
+              : "text-slate-400 hover:text-slate-200"
           }`}
         >
           <History className="w-3.5 h-3.5" />
-          <span>Lịch sử & Ký quỹ</span>
+          <span>Lịch sử Escrow</span>
         </button>
       </div>
 
-      {/* ======================================================== */}
-      {/* SUB-TAB 1: TIN ĐANG TUYỂN                                 */}
-      {/* ======================================================== */}
+      {/* SUB-TAB 1: TIN ĐANG TUYỂN */}
       {activeSubTab === "active_shifts" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Các Ca Làm Đang Mở Tuyển ({shifts.length})
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              Ca Làm Đang Mở ({shifts.length})
             </h3>
             <button
               onClick={() => setShowPostModal(true)}
-              className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1 transition-colors"
+              className="text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Đăng Ca Mới</span>
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {shifts.map((s) => (
               <div
                 key={s.id}
-                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-2 hover:border-indigo-200 transition-colors"
+                className="bg-slate-900 rounded-xl p-3.5 border border-slate-800 space-y-2 hover:border-slate-700 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div>
                     {s.is_sos && (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md uppercase mb-1">
-                        <AlertTriangle className="w-3 h-3" /> Ca SOS Khẩn Cấp (+30.000đ)
+                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold bg-rose-950/70 border border-rose-800/80 text-rose-300 px-1.5 py-0.2 rounded-md uppercase mb-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-400" /> SOS (+30k)
                       </span>
                     )}
-                    <h4 className="text-xs font-bold text-slate-900">{s.title}</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{s.description}</p>
+                    <h4 className="text-xs font-bold text-white">{s.title}</h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{s.description}</p>
                   </div>
-                  <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg shrink-0">
+                  <span className="text-xs font-mono font-bold text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md shrink-0">
                     {s.hourly_wage.toLocaleString("vi-VN")} đ/h
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 gap-2">
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800 gap-2 font-mono">
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
                       {s.shift_start} - {s.shift_end} ({s.duration_hours}h)
                     </span>
-                    <span>Cần tuyển: {s.required_candidates} bạn</span>
+                    <span>Cần: {s.required_candidates} bạn</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      Đang nhận hồ sơ
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-sans font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded">
+                    Đang nhận đơn
+                  </span>
                 </div>
               </div>
             ))}
@@ -264,79 +255,68 @@ export function EmployerDashboard({
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* SUB-TAB 2: ỨNG VIÊN MỚI                                  */}
-      {/* ======================================================== */}
+      {/* SUB-TAB 2: ỨNG VIÊN MỚI */}
       {activeSubTab === "new_candidates" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Ứng Viên Đang Chờ Duyệt (Hồ Sơ Mới)
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              Ứng Viên Chờ Duyệt
             </h3>
-            <span className="text-xs text-slate-500">
-              {rejectedCandidate ? 0 : appliedCandidateIds.length} ứng viên
+            <span className="text-xs font-mono text-slate-500">
+              {rejectedCandidate ? 0 : appliedCandidateIds.length} hồ sơ
             </span>
           </div>
 
           {!rejectedCandidate && appliedCandidateIds.length > 0 ? (
-            <div className="bg-white rounded-2xl p-4 border border-indigo-100 shadow-sm space-y-3">
+            <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <img
                     src={candidateUser.avatar_url}
                     alt={candidateUser.full_name}
-                    className="w-12 h-12 rounded-2xl object-cover border-2 border-indigo-100 shadow-xs"
+                    className="w-11 h-11 rounded-lg object-cover border border-slate-700"
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-black text-slate-900">
+                      <h4 className="text-xs font-bold text-white">
                         {candidateUser.full_name}
                       </h4>
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                        Độ khớp 96%
+                      <span className="text-[10px] font-mono text-purple-300 bg-purple-950/70 border border-purple-800/60 px-1.5 py-0.2 rounded">
+                        96% Khớp
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      Sinh viên ĐH Kỹ thuật Công nghiệp (TNUT) • 🔋 Pin uy tín: 100%
+                    <p className="text-[11px] text-slate-400">
+                      ĐH TNUT • 🔋 Pin: 100%
                     </p>
-                    <p className="text-[10px] text-slate-400">
-                      Ứng tuyển ca:{" "}
-                      <span className="font-semibold text-slate-700">
-                        {shifts[0]?.title || "Phục vụ bàn ca tối The Cuppa"}
-                      </span>
+                    <p className="text-[10px] text-slate-500">
+                      Ứng tuyển: <span className="text-slate-300">{shifts[0]?.title || "Ca tối The Cuppa"}</span>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Kỹ năng & thời gian rảnh của ứng viên */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-1.5">
+              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs space-y-1">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Kỹ năng đã xác thực:</span>
-                  <span className="font-semibold text-slate-800">
-                    Phục vụ bàn, Pha chế cơ bản, Giao tiếp STAR
-                  </span>
+                  <span className="text-slate-500">Kỹ năng:</span>
+                  <span className="text-slate-300">Phục vụ bàn, Pha chế, Thu ngân</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Khoảng cách đến quán:</span>
-                  <span className="font-semibold text-emerald-600">
-                    0.8 km (khoảng 3 phút di chuyển)
-                  </span>
+                  <span className="text-slate-500">Khoảng cách:</span>
+                  <span className="text-emerald-400 font-mono">0.8 km (~3 phút)</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-slate-500">Kỳ vọng lương:</span>
-                  <span className="font-semibold text-indigo-600">30.000 đ/h</span>
+                  <span className="text-slate-200 font-mono">30.000 đ/h</span>
                 </div>
               </div>
 
-              {/* Hành động phê duyệt */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
                 <div className="flex items-center gap-2">
                   {onNavigateToMessages && (
                     <button
                       type="button"
                       onClick={onNavigateToMessages}
-                      className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1"
+                      className="text-xs font-medium text-slate-300 bg-slate-950 hover:bg-slate-850 border border-slate-800 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-1"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>Nhắn tin</span>
@@ -346,7 +326,7 @@ export function EmployerDashboard({
                   <button
                     type="button"
                     onClick={() => setRejectedCandidate(true)}
-                    className="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1"
+                    className="text-xs font-medium text-rose-400 hover:text-rose-300 bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded-md transition-colors flex items-center gap-1"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     <span>Từ chối</span>
@@ -354,9 +334,9 @@ export function EmployerDashboard({
                 </div>
 
                 {approvedCandidate ? (
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Đã duyệt & Khóa quỹ Escrow
+                  <span className="text-xs font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-md flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Đã duyệt & Ký quỹ
                   </span>
                 ) : (
                   <button
@@ -366,207 +346,170 @@ export function EmployerDashboard({
                       setQrContent("KY QUY CA SOS HUY TNUT");
                       setShowQrModal(true);
                     }}
-                    className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                    className="text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
                   >
                     <QrCode className="w-3.5 h-3.5" />
-                    <span>Duyệt & Ký quỹ VietQR (153k)</span>
+                    <span>Duyệt & Ký quỹ (153k)</span>
                   </button>
                 )}
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 space-y-2">
-              <Users className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="text-xs font-bold text-slate-700">
-                {rejectedCandidate
-                  ? "Đã từ chối ứng viên. Không còn hồ sơ chờ duyệt."
-                  : "Chưa có ứng viên mới nào nộp đơn."}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                Khi sinh viên bấm ứng tuyển, danh sách sẽ tự động xuất hiện tại đây.
+            <div className="bg-slate-900 rounded-xl p-8 text-center border border-slate-800 space-y-1.5">
+              <Users className="w-7 h-7 text-slate-600 mx-auto" />
+              <p className="text-xs font-semibold text-slate-300">
+                {rejectedCandidate ? "Đã từ chối ứng viên." : "Chưa có ứng viên mới."}
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* SUB-TAB 3: LỊCH LÀM VIỆC HÔM NAY (TODAY ROSTER)          */}
-      {/* ======================================================== */}
+      {/* SUB-TAB 3: LỊCH HÔM NAY & MÃ PIN */}
       {activeSubTab === "today_roster" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
               Lịch Ca Làm Việc Hôm Nay
             </h3>
-            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-              Hôm nay, 16/09/2026
+            <span className="text-[11px] font-mono text-slate-400">
+              16/09/2026
             </span>
           </div>
 
-          {/* Venue Check-in PIN Card */}
-          <div className="bg-gradient-to-r from-indigo-900 to-purple-900 text-white p-4 rounded-2xl shadow-sm space-y-2">
+          {/* PIN Card */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-amber-300" />
-                <span className="text-xs font-bold text-indigo-100">
-                  Mã PIN Điểm Danh Dự Phòng Quán:
+                <KeyRound className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-medium text-slate-300">
+                  Mã PIN Điểm Danh Quán:
                 </span>
               </div>
               <button
                 onClick={handleCopyPin}
-                className="text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                className="text-[11px] text-slate-300 hover:text-white bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
               >
                 <Copy className="w-3 h-3" />
-                <span>{copiedPin ? "Đã sao chép" : "Sao chép"}</span>
+                <span>{copiedPin ? "Đã chép" : "Sao chép"}</span>
               </button>
             </div>
 
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-black tracking-widest text-amber-300">
+              <span className="text-2xl font-mono font-bold tracking-widest text-purple-400">
                 8866
               </span>
-              <span className="text-[11px] text-indigo-200">
-                Cung cấp mã PIN này cho ứng viên nếu GPS điện thoại của họ bị chập chờn.
+              <span className="text-[11px] text-slate-400">
+                Cung cấp mã PIN nếu GPS điện thoại ứng viên chập chờn.
               </span>
             </div>
           </div>
 
-          {/* Active Today Roster Card */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+          {/* Active Roster */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
             <div className="flex items-start justify-between">
               <div>
-                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md uppercase mb-1">
-                  <AlertTriangle className="w-3 h-3" /> Ca Tối SOS
+                <span className="text-[9px] font-semibold text-rose-400 bg-slate-950 border border-slate-800 px-1.5 py-0.2 rounded uppercase">
+                  Ca Tối SOS
                 </span>
-                <h4 className="text-xs font-bold text-slate-900">
+                <h4 className="text-xs font-bold text-white mt-1">
                   {shifts[0]?.title || "Phục vụ bàn ca tối The Cuppa"}
                 </h4>
-                <p className="text-[11px] text-slate-500">
-                  18:00 - 22:00 (4 tiếng) • Bán kính check-in 50m
+                <p className="text-[11px] text-slate-400 font-mono">
+                  18:00 - 22:00 (4 tiếng)
                 </p>
               </div>
 
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                Đang trực tuyến
+              <span className="text-[10px] font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded">
+                Trực tuyến
               </span>
             </div>
 
-            {/* Nhân sự nhận ca */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <img
                   src={candidateUser.avatar_url}
                   alt={candidateUser.full_name}
-                  className="w-9 h-9 rounded-xl object-cover border border-slate-200"
+                  className="w-7 h-7 rounded-md object-cover border border-slate-700"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-800 block">
-                    {candidateUser.full_name} (TNUT)
+                  <span className="text-xs font-semibold text-white block">
+                    {candidateUser.full_name}
                   </span>
-                  <span className="text-[10px] text-emerald-600 font-semibold">
-                    ● Sẵn sàng nhận ca lúc 17:55
+                  <span className="text-[10px] text-emerald-400">
+                    Sẵn sàng nhận ca lúc 17:55
                   </span>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-xs font-bold text-indigo-600 block">
-                  128.000 đ
+                <span className="text-xs font-bold font-mono text-slate-200 block">
+                  153.000 đ
                 </span>
-                <span className="text-[10px] text-slate-400">Escrow đã nạp</span>
+                <span className="text-[10px] text-slate-500">Escrow đã nạp</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* SUB-TAB 4: LỊCH SỬ TUYỂN DỤNG & KÝ QUỸ ESCROW            */}
-      {/* ======================================================== */}
+      {/* SUB-TAB 4: LỊCH SỬ KÝ QUỸ */}
       {activeSubTab === "history" && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Lịch Sử Tuyển Dụng & Giao Dịch Ký Quỹ
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              Lịch Sử Giao Dịch Escrow
             </h3>
-            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-              <ShieldCheck className="w-4 h-4" /> Bảo chứng PayOS VietQR
+            <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px]">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> PayOS VietQR
             </span>
           </div>
 
           <div className="space-y-2">
-            {/* Giao dịch 1 */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                  <CheckCircle2 className="w-5 h-5" />
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-slate-950 border border-slate-800 text-purple-400 flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">
+                  <h4 className="text-xs font-semibold text-white">
                     Ký quỹ ca SOS #shift_sos_01
                   </h4>
-                  <p className="text-[10px] text-slate-500">
-                    16/09/2026 17:20 • Ứng viên: Nguyễn Đức Huy
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    16/09/2026 • Nguyễn Đức Huy
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-black text-slate-900 block">
+                <span className="text-xs font-bold font-mono text-slate-200 block">
                   -153.000 đ
                 </span>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-amber-400">
                   Đang giữ Escrow
                 </span>
               </div>
             </div>
 
-            {/* Giao dịch 2 */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-                  <Wallet className="w-5 h-5" />
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-slate-950 border border-slate-800 text-emerald-400 flex items-center justify-center">
+                  <Wallet className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">
+                  <h4 className="text-xs font-semibold text-white">
                     Nạp tiền vào ví doanh nghiệp
                   </h4>
-                  <p className="text-[10px] text-slate-500">
-                    15/09/2026 09:15 • Chuyển khoản VietQR PayOS
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    15/09/2026 • Chuyển khoản VietQR
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-black text-emerald-600 block">
+                <span className="text-xs font-bold font-mono text-emerald-400 block">
                   +1.000.000 đ
                 </span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-emerald-400">
                   Thành công
-                </span>
-              </div>
-            </div>
-
-            {/* Giao dịch 3 */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">
-                    Giải ngân hoàn tất ca làm #shift_prev_09
-                  </h4>
-                  <p className="text-[10px] text-slate-500">
-                    14/09/2026 22:05 • Ứng viên: Trần Mai Anh
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-black text-slate-900 block">
-                  -120.000 đ
-                </span>
-                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                  Đã giải ngân
                 </span>
               </div>
             </div>
@@ -576,16 +519,23 @@ export function EmployerDashboard({
 
       {/* Modal Đăng Ca Mới */}
       {showPostModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 animate-in fade-in">
-            <h3 className="text-base font-black text-slate-900">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-slate-900 w-full max-w-md rounded-xl p-5 border border-slate-800 shadow-modal space-y-3.5 relative">
+            <button
+              onClick={() => setShowPostModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-md text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-sm font-bold text-white">
               Đăng Ca Làm Việc Mới
             </h3>
 
-            {/* Shift Templates (Mẫu ca định kỳ) */}
+            {/* Mẫu ca */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-500 block">
-                💡 Chọn nhanh mẫu ca định kỳ:
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                Mẫu ca nhanh:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 <button
@@ -599,9 +549,9 @@ export function EmployerDashboard({
                     setNewPeriod("EVENING");
                     setIsSos(false);
                   }}
-                  className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
+                  className="text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
                 >
-                  ☕ Phục vụ tối (4h - 32k)
+                  Phục vụ tối (4h - 32k)
                 </button>
                 <button
                   type="button"
@@ -614,9 +564,9 @@ export function EmployerDashboard({
                     setNewPeriod("MORNING");
                     setIsSos(false);
                   }}
-                  className="text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors"
+                  className="text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
                 >
-                  🥤 Pha chế sáng (4h - 30k)
+                  Pha chế sáng (4h - 30k)
                 </button>
                 <button
                   type="button"
@@ -629,16 +579,16 @@ export function EmployerDashboard({
                     setNewPeriod("EVENING");
                     setIsSos(true);
                   }}
-                  className="text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors"
+                  className="text-[11px] bg-rose-950/70 text-rose-300 border border-rose-800/80 px-2 py-0.5 rounded-md"
                 >
-                  🚨 Tuyển SOS (+30k)
+                  Tuyển SOS (+30k)
                 </button>
               </div>
             </div>
 
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-medium text-slate-300 block mb-1">
                   Tiêu đề ca làm việc:
                 </label>
                 <input
@@ -646,15 +596,14 @@ export function EmployerDashboard({
                   placeholder="VD: Phục vụ khách ca tối The Cuppa"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 focus:border-purple-500 focus:outline-none"
                   required
                 />
               </div>
 
-              {/* Khung ca & Giờ làm việc */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
                     Khung ca:
                   </label>
                   <select
@@ -667,33 +616,31 @@ export function EmployerDashboard({
                       else if (p === "EVENING") { setNewStart("18:00"); setNewEnd("22:00"); }
                       else if (p === "NIGHT") { setNewStart("22:00"); setNewEnd("02:00"); }
                     }}
-                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 focus:border-purple-500 focus:outline-none"
                   >
-                    <option value="MORNING">🌅 Sáng (07h-11h)</option>
-                    <option value="AFTERNOON">☀️ Chiều (13h-17h)</option>
-                    <option value="EVENING">🌙 Tối (18h-22h)</option>
-                    <option value="NIGHT">🌌 Đêm (22h-02h)</option>
+                    <option value="MORNING" className="bg-slate-900">Sáng (07h-11h)</option>
+                    <option value="AFTERNOON" className="bg-slate-900">Chiều (13h-17h)</option>
+                    <option value="EVENING" className="bg-slate-900">Tối (18h-22h)</option>
+                    <option value="NIGHT" className="bg-slate-900">Đêm (22h-02h)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Thời gian bắt đầu - kết thúc:
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Bắt đầu - kết thúc:
                   </label>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 font-mono text-xs">
                     <input
                       type="text"
                       value={newStart}
                       onChange={(e) => setNewStart(e.target.value)}
-                      placeholder="18:00"
-                      className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-center font-mono font-bold text-slate-800"
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-md p-2 text-center"
                     />
-                    <span className="text-slate-400 font-bold">-</span>
+                    <span className="text-slate-500">-</span>
                     <input
                       type="text"
                       value={newEnd}
                       onChange={(e) => setNewEnd(e.target.value)}
-                      placeholder="22:00"
-                      className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-center font-mono font-bold text-slate-800"
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-md p-2 text-center"
                     />
                   </div>
                 </div>
@@ -701,20 +648,20 @@ export function EmployerDashboard({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Mức lương (đ/h):
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Lương (đ/h):
                   </label>
                   <input
                     type="number"
                     step="1000"
                     value={newWage}
                     onChange={(e) => setNewWage(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Thời lượng (tiếng):
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Thời lượng (h):
                   </label>
                   <input
                     type="number"
@@ -722,42 +669,42 @@ export function EmployerDashboard({
                     max="10"
                     value={newHours}
                     onChange={(e) => setNewHours(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono"
                   />
                 </div>
               </div>
 
-              {/* SOS Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 border border-rose-200">
+              {/* SOS checkbox */}
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-slate-950 border border-slate-800">
                 <div>
-                  <span className="text-xs font-bold text-rose-900 block">
+                  <span className="text-xs font-medium text-white block">
                     Đánh dấu ca SOS khẩn cấp?
                   </span>
-                  <span className="text-[10px] text-rose-600">
-                    Thưởng thêm +30.000đ để hút ứng viên ngay
+                  <span className="text-[10px] text-slate-500">
+                    Thưởng thêm +30.000đ hút ứng viên
                   </span>
                 </div>
                 <input
                   type="checkbox"
                   checked={isSos}
                   onChange={(e) => setIsSos(e.target.checked)}
-                  className="w-4 h-4 accent-rose-600 cursor-pointer"
+                  className="w-4 h-4 accent-rose-500 cursor-pointer"
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPostModal(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                  className="flex-1 py-2 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs rounded-md"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md"
+                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-md shadow-sm"
                 >
-                  Đăng ngay
+                  Đăng ca
                 </button>
               </div>
             </form>
@@ -765,7 +712,7 @@ export function EmployerDashboard({
         </div>
       )}
 
-      {/* MODAL MÃ QR THANH TOÁN VIETQR PAYOS */}
+      {/* Modal QR VietQR PayOS */}
       <PaymentQrModal
         isOpen={showQrModal}
         onClose={() => setShowQrModal(false)}

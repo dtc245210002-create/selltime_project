@@ -26,69 +26,68 @@ export function ApplicationStepper({
 
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-        <span>Tiến trình ứng tuyển ca làm:</span>
-        <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-[10px] font-extrabold border border-indigo-100">
-          Bước {currentIndex + 1}/5: {STEPS[currentIndex]?.shortLabel}
+      <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+        <span>Tiến trình ứng tuyển:</span>
+        <span className="text-purple-300 bg-purple-950/70 border border-purple-800/60 px-2 py-0.5 rounded-md text-[10px] font-mono">
+          {currentIndex + 1}/5: {STEPS[currentIndex]?.shortLabel}
         </span>
       </div>
 
       {compact ? (
-        /* Thanh tiến trình mini */
-        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+        /* Mini progress line */
+        <div className="w-full bg-slate-950 h-1.5 rounded-md overflow-hidden flex border border-slate-800">
           {STEPS.map((step, idx) => (
             <div
               key={step.id}
-              className={`flex-1 border-r border-white last:border-0 transition-all ${
-                idx <= currentIndex ? "bg-gradient-to-r from-indigo-600 to-emerald-500" : "bg-slate-200"
+              className={`flex-1 border-r border-slate-900 last:border-0 transition-all ${
+                idx <= currentIndex ? "bg-purple-500" : "bg-slate-800"
               }`}
             />
           ))}
         </div>
       ) : (
-        /* Thanh tiến trình chi tiết đầy đủ 5 bước */
-        <div className="space-y-1.5 pt-1">
+        /* Detailed 5-step stepper */
+        <div className="space-y-1 pt-1">
           {STEPS.map((step, idx) => {
             const Icon = step.icon;
             const isCompleted = idx < currentIndex;
             const isCurrent = idx === currentIndex;
-            const isUpcoming = idx > currentIndex;
 
             return (
               <div
                 key={step.id}
-                className={`flex items-center gap-2.5 p-2 rounded-xl transition-all ${
+                className={`flex items-center gap-2 p-1.5 rounded-md transition-colors ${
                   isCurrent
-                    ? "bg-indigo-50 border border-indigo-200 shadow-2xs text-indigo-950 font-bold"
+                    ? "bg-slate-950 border border-purple-800/80 text-white font-medium"
                     : isCompleted
-                    ? "text-slate-600 font-medium"
-                    : "text-slate-300 font-normal"
+                    ? "text-slate-300"
+                    : "text-slate-600"
                 }`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs transition-colors ${
+                  className={`w-5 h-5 rounded flex items-center justify-center shrink-0 text-xs ${
                     isCompleted
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-emerald-600 text-white"
                       : isCurrent
-                      ? "bg-indigo-600 text-white animate-pulse shadow-xs"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-purple-600 text-white"
+                      : "bg-slate-800 text-slate-500"
                   }`}
                 >
-                  {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                  {isCompleted ? <Check className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
                 </div>
 
-                <div className="flex-1 text-[11px] leading-tight">
-                  <span className="block">{step.label}</span>
+                <div className="flex-1 text-[11px] leading-tight truncate">
+                  <span className="truncate">{step.label}</span>
                 </div>
 
                 {isCurrent && (
-                  <span className="text-[9px] bg-indigo-600 text-white px-1.5 py-0.2 rounded font-black uppercase">
+                  <span className="text-[9px] bg-purple-950 text-purple-300 border border-purple-800/60 px-1 py-0.2 rounded font-mono">
                     Hiện tại
                   </span>
                 )}
                 {isCompleted && (
-                  <span className="text-[9px] text-emerald-600 font-bold">
-                    ✓ Xong
+                  <span className="text-[9px] text-emerald-400 font-mono">
+                    ✓
                   </span>
                 )}
               </div>

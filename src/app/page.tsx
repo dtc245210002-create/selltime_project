@@ -9,6 +9,8 @@ import { MyShiftsTab, ShiftAttendanceStatus } from "../components/MyShiftsTab";
 import { MessagesTab } from "../components/MessagesTab";
 import { ProfileTab } from "../components/ProfileTab";
 import { EmployerDashboard } from "../components/EmployerDashboard";
+import { EmployerExploreTab } from "../components/EmployerExploreTab";
+import { EmployerProfileTab } from "../components/EmployerProfileTab";
 import { AuthModal } from "../components/AuthModal";
 import { AiCoachModal } from "../components/AiCoachModal";
 import { CheckinModal } from "../components/CheckinModal";
@@ -175,18 +177,43 @@ export default function Home() {
           employerName={MOCK_EMPLOYER_PROFILE.company_name}
         />
 
-        {/* NỘI DUNG VAI TRÒ CHỦ QUÁN (EMPLOYER) */}
+        {/* NỘI DUNG VAI TRÒ CHỦ QUÁN (EMPLOYER) THEO 4 TAB */}
         {currentRole === "EMPLOYER" ? (
-          <div className="max-w-4xl mx-auto w-full">
-            <EmployerDashboard
-              shifts={shifts.filter(
-                (s) => s.employer_id === MOCK_EMPLOYER_USER.id
-              )}
-              appliedCandidateIds={appliedShiftIds}
-              candidateUser={MOCK_CANDIDATE_USER}
-              onPostNewShift={handlePostNewShift}
-            />
-          </div>
+          <>
+            {activeTab === "explore" && (
+              <div className="max-w-3xl mx-auto w-full">
+                <EmployerExploreTab />
+              </div>
+            )}
+
+            {activeTab === "my-shifts" && (
+              <div className="max-w-4xl mx-auto w-full">
+                <EmployerDashboard
+                  shifts={shifts.filter(
+                    (s) => s.employer_id === MOCK_EMPLOYER_USER.id
+                  )}
+                  appliedCandidateIds={appliedShiftIds}
+                  candidateUser={MOCK_CANDIDATE_USER}
+                  onPostNewShift={handlePostNewShift}
+                />
+              </div>
+            )}
+
+            {activeTab === "messages" && (
+              <div className="max-w-2xl mx-auto w-full h-[650px] lg:h-[750px]">
+                <MessagesTab />
+              </div>
+            )}
+
+            {activeTab === "profile" && (
+              <div className="max-w-2xl mx-auto w-full">
+                <EmployerProfileTab
+                  user={currentUser || MOCK_EMPLOYER_USER}
+                  profile={MOCK_EMPLOYER_PROFILE}
+                />
+              </div>
+            )}
+          </>
         ) : (
           /* NỘI DUNG VAI TRÒ SINH VIÊN (CANDIDATE) THEO 4 TAB */
           <>

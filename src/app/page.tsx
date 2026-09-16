@@ -201,7 +201,10 @@ export default function Home() {
 
             {activeTab === "messages" && (
               <div className="max-w-2xl mx-auto w-full h-[650px] lg:h-[750px]">
-                <MessagesTab />
+                <MessagesTab
+                  currentUser={currentUser || MOCK_EMPLOYER_USER}
+                  currentRole={currentRole}
+                />
               </div>
             )}
 
@@ -294,7 +297,10 @@ export default function Home() {
 
             {activeTab === "messages" && (
               <div className="max-w-2xl mx-auto w-full h-[650px] lg:h-[750px]">
-                <MessagesTab />
+                <MessagesTab
+                  currentUser={currentUser || MOCK_CANDIDATE_USER}
+                  currentRole={currentRole}
+                />
               </div>
             )}
 

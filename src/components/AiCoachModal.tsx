@@ -301,78 +301,78 @@ export function AiCoachModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200 font-sans">
-      <div className="bg-white w-full max-w-2xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-100">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200 font-sans">
+      <div className="bg-slate-900 w-full max-w-2xl h-[88vh] rounded-xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-800">
         {/* Nút đóng */}
         <button
           onClick={() => {
             stopSpeaking();
             onClose();
           }}
-          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 z-10 transition-colors"
+          className="absolute top-4 right-4 w-8 h-8 rounded-md bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white z-10 transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-indigo-950 text-white p-4 sm:p-5 shrink-0">
+        <div className="bg-slate-900 border-b border-slate-800 p-4 sm:p-5 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-purple-300">
-              <Bot className="w-6 h-6" />
+            <div className="w-9 h-9 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <Bot className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-white">
+                <h2 className="text-base font-bold text-white">
                   Sell Time AI Voice & Interview
                 </h2>
-                <span className="text-[10px] bg-purple-500/40 text-purple-200 px-2 py-0.5 rounded-full font-bold border border-purple-400/30">
+                <span className="text-[10px] bg-purple-950/60 text-purple-300 px-2 py-0.5 rounded-md font-semibold border border-purple-800/60">
                   Gemini Flash STAR
                 </span>
               </div>
-              <p className="text-xs text-indigo-200 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Luyện phỏng vấn đa ngôn ngữ theo chuẩn STAR & Bóc tách CV thông minh
               </p>
             </div>
           </div>
 
           {/* Sub Tabs */}
-          <div className="flex bg-black/25 p-1 rounded-xl mt-4 max-w-md">
+          <div className="flex bg-slate-950 p-1 rounded-md mt-4 max-w-md border border-slate-800">
             <button
               onClick={() => setActiveTab("interview")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
                 activeTab === "interview"
-                  ? "bg-white text-indigo-950 shadow-sm"
-                  : "text-indigo-200 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Mic className="w-3.5 h-3.5 text-purple-600" />
+              <Mic className="w-3.5 h-3.5 text-purple-400" />
               <span>Phỏng Vấn STAR</span>
             </button>
             <button
               onClick={() => setActiveTab("cv")}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
                 activeTab === "cv"
-                  ? "bg-white text-indigo-950 shadow-sm"
-                  : "text-indigo-200 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <FileText className="w-3.5 h-3.5 text-indigo-600" />
+              <FileText className="w-3.5 h-3.5 text-purple-400" />
               <span>Bóc Tách & Tối Ưu CV</span>
             </button>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-900">
           {/* ======================================================== */}
           {/* TAB 1: PHỎNG VẤN STAR ĐA NGÔN NGỮ                        */}
           {/* ======================================================== */}
           {activeTab === "interview" && (
             <div className="flex flex-col h-full space-y-3">
               {/* THANH CHỌN NGÔN NGỮ PHỎNG VẤN */}
-              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                  <Languages className="w-4 h-4 text-indigo-600" />
+              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                  <Languages className="w-4 h-4 text-purple-400" />
                   <span>Ngôn ngữ:</span>
                 </div>
 
@@ -381,10 +381,10 @@ export function AiCoachModal({
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang)}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border ${
+                      className={`px-2 py-0.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 border ${
                         selectedLang.code === lang.code
-                          ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-[1.02]"
-                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                          ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                          : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800"
                       }`}
                     >
                       <span>{lang.flag}</span>
@@ -395,24 +395,24 @@ export function AiCoachModal({
               </div>
 
               {/* Băng thông tin trạng thái & Chuyển đổi Voice vs Gõ phím */}
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex flex-wrap items-center justify-between text-xs text-purple-950 gap-2">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
                 <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-purple-700" />
-                  <span className="font-semibold">
+                  <Bot className="w-4 h-4 text-purple-400" />
+                  <span className="font-medium text-slate-200">
                     Người phỏng vấn: Chị Lan AI ({selectedLang.name})
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
                   {/* Nút chuyển chế độ Gõ phím vs Micro */}
-                  <div className="flex bg-white rounded-lg p-0.5 border border-purple-200">
+                  <div className="flex bg-slate-900 rounded-md p-0.5 border border-slate-800">
                     <button
                       type="button"
                       onClick={() => setInputMode("voice")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors ${
                         inputMode === "voice"
                           ? "bg-purple-600 text-white"
-                          : "text-slate-600 hover:text-purple-600"
+                          : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
                       <Mic className="w-3 h-3" /> Voice
@@ -420,10 +420,10 @@ export function AiCoachModal({
                     <button
                       type="button"
                       onClick={() => setInputMode("text")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors ${
                         inputMode === "text"
                           ? "bg-purple-600 text-white"
-                          : "text-slate-600 hover:text-purple-600"
+                          : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
                       <Keyboard className="w-3 h-3" /> Gõ phím
@@ -433,33 +433,33 @@ export function AiCoachModal({
                   {isSpeaking && (
                     <button
                       onClick={stopSpeaking}
-                      className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-rose-200"
+                      className="text-[10px] bg-rose-950/60 text-rose-400 border border-rose-800/50 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 hover:bg-rose-900/60 transition-colors"
                     >
                       <VolumeX className="w-3 h-3" /> Dừng
                     </button>
                   )}
                   <button
                     onClick={() => handleLanguageChange(selectedLang)}
-                    className="text-[10px] text-slate-500 hover:text-indigo-600 flex items-center gap-0.5"
+                    className="text-slate-400 hover:text-white p-1 transition-colors"
                     title="Bắt đầu lại buổi phỏng vấn"
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
               {/* Thông báo nếu chạy trên trình duyệt không có Web Speech API */}
               {!hasSpeechSupport && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 text-[11px] text-amber-800 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <div className="bg-amber-950/40 border border-amber-800/60 rounded-lg p-2 text-xs text-amber-300 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>
-                    Trình duyệt của bạn đang bật <strong>Chế độ Gõ phím</strong> (Hỗ trợ tốt trên Safari iOS & Mọi máy tính).
+                    Trình duyệt đang bật <strong>Chế độ Gõ phím</strong> (Hỗ trợ tốt trên Safari iOS & Mọi thiết bị).
                   </span>
                 </div>
               )}
 
               {/* Khu vực Chat Transcript */}
-              <div className="flex-1 overflow-y-auto space-y-3 p-1">
+              <div className="flex-1 overflow-y-auto space-y-3 p-1 min-h-[220px]">
                 {messages.map((m, idx) => (
                   <div
                     key={idx}
@@ -468,10 +468,10 @@ export function AiCoachModal({
                     }`}
                   >
                     <div
-                      className={`max-w-[88%] rounded-2xl p-3.5 text-xs whitespace-pre-wrap leading-relaxed ${
+                      className={`max-w-[88%] rounded-lg p-3 text-xs whitespace-pre-wrap leading-relaxed ${
                         m.role === "user"
-                          ? "bg-indigo-600 text-white rounded-tr-none shadow-sm"
-                          : "bg-white text-slate-800 rounded-tl-none border border-slate-200 shadow-sm"
+                          ? "bg-purple-600 text-white rounded-tr-none shadow-xs"
+                          : "bg-slate-950 text-slate-200 rounded-tl-none border border-slate-800 shadow-xs"
                       }`}
                     >
                       {m.text}
@@ -479,7 +479,7 @@ export function AiCoachModal({
                     {m.role === "model" && (
                       <button
                         onClick={() => speakText(m.text)}
-                        className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-1 mt-1 px-1 font-semibold transition-colors"
+                        className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 px-1 font-medium transition-colors"
                       >
                         <Volume2 className="w-3 h-3" /> Nghe phát âm
                       </button>
@@ -488,23 +488,23 @@ export function AiCoachModal({
                 ))}
 
                 {isAiReplying && (
-                  <div className="flex items-center gap-2 text-xs text-purple-600 p-2 bg-purple-50 rounded-xl w-fit">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="flex items-center gap-2 text-xs text-purple-400 p-2 bg-slate-950 border border-slate-800 rounded-lg w-fit">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span>Gemini đang phân tích câu trả lời theo chuẩn STAR...</span>
                   </div>
                 )}
               </div>
 
               {/* Hộp nhập liệu & Điều khiển gửi tin */}
-              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 flex items-center gap-2 shrink-0 shadow-sm">
+              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center gap-2 shrink-0">
                 {inputMode === "voice" && hasSpeechSupport && (
                   <button
                     type="button"
                     onClick={toggleSpeechRecognition}
-                    className={`p-2.5 rounded-xl border transition-all ${
+                    className={`p-2.5 rounded-md border transition-colors ${
                       isListening
-                        ? "bg-rose-600 text-white border-rose-600 animate-pulse shadow-md"
-                        : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                        ? "bg-rose-600 text-white border-rose-600 animate-pulse"
+                        : "bg-slate-900 text-purple-400 border-slate-800 hover:bg-slate-800"
                     }`}
                     title={
                       isListening
@@ -532,13 +532,13 @@ export function AiCoachModal({
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSendInterview()}
-                  className="flex-1 bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="flex-1 bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 rounded-md px-3 py-2.5 focus:outline-none focus:border-purple-500"
                 />
 
                 <button
                   onClick={handleSendInterview}
                   disabled={!userInput.trim() || isAiReplying}
-                  className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl shadow-md transition-colors"
+                  className="p-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-md transition-colors"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -551,8 +551,8 @@ export function AiCoachModal({
           {/* ======================================================== */}
           {activeTab === "cv" && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <label className="text-xs font-bold text-slate-800 block">
+              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
+                <label className="text-xs font-medium text-slate-300 block">
                   Dán nội dung giới thiệu bản thân / CV sinh viên vào đây:
                 </label>
                 <textarea
@@ -560,13 +560,13 @@ export function AiCoachModal({
                   value={cvInputText}
                   onChange={(e) => setCvInputText(e.target.value)}
                   placeholder="Ví dụ: Em học trường gì, từng làm công việc gì, tính cách và mong muốn..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-md p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                 />
 
                 <button
                   onClick={handleAnalyzeCv}
                   disabled={isAnalyzingCv}
-                  className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-2"
                 >
                   {isAnalyzingCv ? (
                     <>
@@ -584,26 +584,26 @@ export function AiCoachModal({
 
               {/* Kết quả sau khi AI phân tích */}
               {cvResult && (
-                <div className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-amber-500" />
+                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-400" />
                       Điểm Đánh Giá CV:
                     </span>
-                    <span className="text-base font-black text-indigo-600">
+                    <span className="text-base font-mono font-bold text-emerald-400">
                       {cvResult.cv_score}/100
                     </span>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[11px] font-bold text-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-400">
                         Kỹ năng trích xuất được:
                       </span>
                       <button
                         type="button"
                         onClick={handleApplySkills}
-                        className="text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-2xs"
+                        className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
                       >
                         {appliedSkillsSuccess ? (
                           <>
@@ -623,9 +623,9 @@ export function AiCoachModal({
                         (skill: string, idx: number) => (
                           <span
                             key={idx}
-                            className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1"
+                            className="bg-emerald-950/60 text-emerald-400 text-xs font-medium px-2.5 py-1 rounded-md border border-emerald-800/60 flex items-center gap-1"
                           >
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                             {skill}
                           </span>
                         )
@@ -633,19 +633,19 @@ export function AiCoachModal({
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                  <div className="bg-slate-900 p-3 rounded-md border border-slate-800 text-xs text-slate-300 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">
+                      <span className="font-semibold text-white">
                         Tóm tắt giới thiệu ấn tượng (AI Polished):
                       </span>
                       <button
                         type="button"
                         onClick={handleCopySummary}
-                        className="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                        className="text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded-md border border-slate-700 flex items-center gap-1 transition-colors"
                       >
                         {copiedSummarySuccess ? (
                           <>
-                            <Check className="w-3 h-3 text-emerald-600" />
+                            <Check className="w-3 h-3 text-emerald-400" />
                             <span>Đã sao chép!</span>
                           </>
                         ) : (
@@ -656,16 +656,16 @@ export function AiCoachModal({
                         )}
                       </button>
                     </div>
-                    <p className="italic">&ldquo;{cvResult.professional_summary}&rdquo;</p>
+                    <p className="italic text-slate-300">&ldquo;{cvResult.professional_summary}&rdquo;</p>
                   </div>
 
                   {cvResult.improvement_tips && (
-                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
-                      <span className="font-bold block flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    <div className="bg-amber-950/40 p-3 rounded-md border border-amber-800/60 text-xs text-amber-200 space-y-1.5">
+                      <span className="font-semibold text-amber-300 block flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
                         Gợi ý cải thiện để tăng cơ hội trúng tuyển:
                       </span>
-                      <ul className="list-disc pl-4 space-y-0.5">
+                      <ul className="list-disc pl-4 space-y-1 text-slate-300">
                         {cvResult.improvement_tips.map(
                           (tip: string, idx: number) => (
                             <li key={idx}>{tip}</li>

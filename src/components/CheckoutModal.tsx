@@ -46,19 +46,19 @@ export function CheckoutModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
+      <div className="bg-slate-900 w-full max-w-md rounded-xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4.5 px-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-md">
-              <ShieldCheck className="w-5 h-5 text-white" />
+        <div className="bg-slate-900 border-b border-slate-800 p-4 px-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm sm:text-base leading-snug">
+              <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
                 Hoàn Thành Ca & Ký Nhận Escrow
               </h3>
-              <p className="text-[11px] text-emerald-100/90 font-medium">
+              <p className="text-xs text-slate-400">
                 Giải ngân thù lao tức thì qua VietQR PayOS
               </p>
             </div>
@@ -66,7 +66,7 @@ export function CheckoutModal({
           {!isProcessing && (
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+              className="w-8 h-8 rounded-md bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -78,35 +78,35 @@ export function CheckoutModal({
           {!isDone ? (
             <>
               {/* Tóm tắt ca làm */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center space-y-1">
-                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-center space-y-1.5">
+                <span className="text-xs font-semibold text-purple-400 bg-purple-950/40 border border-purple-800/40 px-2 py-0.5 rounded-md uppercase tracking-wider">
                   {shift.employer_name}
                 </span>
-                <h4 className="font-extrabold text-slate-800 text-sm mt-1">
+                <h4 className="font-bold text-white text-sm mt-1">
                   {shift.title}
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400 font-mono">
                   Thời lượng: {shift.duration_hours} giờ • {shift.shift_start} - {shift.shift_end}
                 </p>
 
-                <div className="pt-3 mt-2 border-t border-slate-200 flex items-center justify-around">
+                <div className="pt-3 mt-2 border-t border-slate-800 flex items-center justify-around">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Lương cơ bản</span>
-                    <span className="text-xs font-bold text-slate-700">
+                    <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Lương cơ bản</span>
+                    <span className="text-xs font-mono font-bold text-slate-300">
                       {shift.total_budget.toLocaleString("vi-VN")} đ
                     </span>
                   </div>
                   {shift.is_sos && (
                     <div>
-                      <span className="text-[10px] text-rose-500 font-bold block">Thưởng SOS</span>
-                      <span className="text-xs font-black text-rose-600">
+                      <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">Thưởng SOS</span>
+                      <span className="text-xs font-mono font-bold text-rose-400">
                         +{(shift.sos_bonus_amount || 0).toLocaleString("vi-VN")} đ
                       </span>
                     </div>
                   )}
                   <div>
-                    <span className="text-[10px] text-emerald-600 font-bold block">Tổng nhận</span>
-                    <span className="text-sm font-black text-emerald-600">
+                    <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">Tổng nhận</span>
+                    <span className="text-sm font-mono font-bold text-emerald-400">
                       {totalEarned.toLocaleString("vi-VN")} đ
                     </span>
                   </div>
@@ -114,15 +114,15 @@ export function CheckoutModal({
               </div>
 
               {/* Lợi ích PartyMode Trust Battery */}
-              <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                   <BatteryCharging className="w-5 h-5" />
                 </div>
                 <div className="text-xs">
-                  <span className="font-bold text-emerald-950 block">
+                  <span className="font-bold text-white block">
                     PartyMode: Tăng +2% Pin Uy Tín
                   </span>
-                  <span className="text-emerald-700 text-[11px]">
+                  <span className="text-slate-400 text-[11px] leading-relaxed">
                     Hoàn thành đúng giờ, không bùng ca giúp bạn luôn được ưu tiên nhận các ca SOS thù lao cao nhất.
                   </span>
                 </div>
@@ -130,10 +130,10 @@ export function CheckoutModal({
 
               {/* Đánh giá chủ cơ sở */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 block">
+                <label className="text-xs font-medium text-slate-300 block">
                   Đánh giá chủ cơ sở & quán làm việc:
                 </label>
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-2 py-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -142,10 +142,10 @@ export function CheckoutModal({
                       className="p-1 transition-transform hover:scale-110"
                     >
                       <Star
-                        className={`w-6 h-6 ${
+                        className={`w-5 h-5 ${
                           star <= rating
                             ? "text-amber-400 fill-amber-400"
-                            : "text-slate-300"
+                            : "text-slate-700"
                         }`}
                       />
                     </button>
@@ -156,7 +156,7 @@ export function CheckoutModal({
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Để lại nhận xét nhanh về ca làm..."
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full text-xs p-2.5 rounded-md border border-slate-700 bg-slate-950 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
@@ -164,11 +164,11 @@ export function CheckoutModal({
               <button
                 onClick={handleCheckoutSubmit}
                 disabled={isProcessing}
-                className="w-full py-3 rounded-2xl font-black text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-75"
+                className="w-full py-2.5 rounded-md font-semibold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-colors active:scale-98 disabled:opacity-50"
               >
                 {isProcessing ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     <span>Đang giải ngân Escrow qua VietQR...</span>
                   </>
                 ) : (
@@ -181,38 +181,38 @@ export function CheckoutModal({
             </>
           ) : (
             /* TRẠNG THÁI HOÀN TẤT THÀNH CÔNG */
-            <div className="text-center py-6 space-y-4 animate-in zoom-in-95">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-10 h-10" />
+            <div className="text-center py-5 space-y-4 animate-in zoom-in-95">
+              <div className="w-14 h-14 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div>
-                <h4 className="text-base font-black text-slate-900">
+                <h4 className="text-base font-bold text-white">
                   Giải Ngân Thành Công!
                 </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Số tiền <strong className="text-emerald-600 font-bold">{totalEarned.toLocaleString("vi-VN")} đ</strong> đã được cộng vào Ví Thu Nhập tức thì của bạn.
+                <p className="text-xs text-slate-400 mt-1">
+                  Số tiền <strong className="text-emerald-400 font-mono font-bold">{totalEarned.toLocaleString("vi-VN")} đ</strong> đã được cộng vào Ví Thu Nhập tức thì của bạn.
                 </p>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 text-left text-xs space-y-1.5">
+              <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800 text-left text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Mã giao dịch Escrow:</span>
-                  <span className="font-mono font-bold text-slate-700">ESC-9976-PAY</span>
+                  <span className="text-slate-500">Mã giao dịch Escrow:</span>
+                  <span className="font-mono font-bold text-slate-200">ESC-9976-PAY</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Phương thức:</span>
-                  <span className="font-bold text-indigo-600">VietQR NAPAS 247</span>
+                  <span className="text-slate-500">Phương thức:</span>
+                  <span className="font-medium text-purple-400">VietQR NAPAS 247</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Thời gian xử lý:</span>
-                  <span className="font-bold text-emerald-600">0.8 giây (Tức thì)</span>
+                  <span className="text-slate-500">Thời gian xử lý:</span>
+                  <span className="font-mono font-medium text-emerald-400">0.8 giây (Tức thì)</span>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-900 hover:bg-black text-white transition-all shadow"
+                className="w-full py-2.5 rounded-md font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-white transition-colors border border-slate-700"
               >
                 Đóng & Xem Ví Cá Nhân
               </button>

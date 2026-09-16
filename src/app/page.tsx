@@ -232,10 +232,10 @@ function HomeContent() {
           /* NỘI DUNG VAI TRÒ SINH VIÊN (CANDIDATE) THEO 4 TAB */
           <>
             {activeTab === "explore" && (
-              <div className={`flex ${viewMode === "mobile" ? "flex-col p-0 gap-3" : "flex-col lg:flex-row gap-6 p-4 sm:p-6"}`}>
+              <div className={`flex ${viewMode === "mobile" ? "flex-col p-3 gap-3" : "flex-col lg:flex-row gap-5 p-4 sm:p-5"}`}>
                 {/* CỘT TRÁI: Widget Lọc Thời Gian Rảnh (Time-First Search Core) */}
-                <div className={`w-full ${viewMode === "mobile" ? "" : "lg:w-[380px] shrink-0"}`}>
-                  <div className={`${viewMode === "mobile" ? "rounded-none" : "sticky top-24 rounded-3xl"} overflow-hidden shadow-sm`}>
+                <div className={`w-full ${viewMode === "mobile" ? "" : "lg:w-[360px] shrink-0"}`}>
+                  <div className={`${viewMode === "mobile" ? "" : "sticky top-20"} rounded-xl overflow-hidden`}>
                     <TimeSliderWidget
                       criteria={criteria}
                       onChange={setCriteria}
@@ -244,52 +244,51 @@ function HomeContent() {
                   </div>
 
                   {/* Chỉ dẫn cuộn nhanh xuống danh sách ca cho màn hình hẹp */}
-                  <div className="p-3 lg:hidden">
+                  <div className="pt-2 lg:hidden">
                     <button
                       type="button"
                       onClick={() => {
                         const el = document.getElementById("shifts-feed-section");
                         if (el) el.scrollIntoView({ behavior: "smooth" });
                       }}
-                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-between transition-all active:scale-98"
+                      className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-md text-xs font-medium flex items-center justify-between transition-colors"
                     >
                       <span className="flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400" />
                         <span>Xem {rankedShifts.length} ca làm việc phù hợp</span>
                       </span>
-                      <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-md font-mono">
-                        Cuộn xem ngay ↓
+                      <span className="text-[11px] bg-slate-900 px-2 py-0.5 rounded text-slate-400 font-mono">
+                        Xem ngay ↓
                       </span>
                     </button>
                   </div>
                 </div>
 
                 {/* CỘT PHẢI: Feed Danh Sách Ca Làm Khớp Nối Đa Biến */}
-                <div id="shifts-feed-section" className={`flex-1 ${viewMode === "mobile" ? "p-3" : "p-0"} space-y-4`}>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                <div id="shifts-feed-section" className="flex-1 space-y-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-indigo-600" />
-                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">
-                        Gợi ý ca làm phù hợp ({rankedShifts.length})
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                        Việc Làm Phù Hợp ({rankedShifts.length})
                       </h3>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setIsAiCoachOpen(true)}
-                        className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm shadow-purple-500/20 transition-all active:scale-95"
+                        className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors"
                       >
-                        <Bot className="w-4 h-4" />
-                        <span>Luyện Phỏng Vấn STAR & CV AI</span>
+                        <Bot className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Trợ lý Phỏng Vấn & CV</span>
                       </button>
-                      <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
+                      <span className="text-xs text-slate-500 hidden sm:inline">
                         Sắp xếp theo Matching Score
                       </span>
                     </div>
                   </div>
 
                   {/* Grid thẻ việc làm (1 cột trên mobile, 2 cột trên máy tính) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {rankedShifts.map((shiftWithMatch) => (
                       <ShiftCard
                         key={shiftWithMatch.id}
@@ -301,14 +300,14 @@ function HomeContent() {
                   </div>
 
                   {/* Footer thông tin thuật toán */}
-                  <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100/60 text-xs text-slate-600 flex items-start gap-2.5 mt-4">
-                    <Info className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="bg-slate-950 rounded-lg p-3 border border-slate-800/80 text-xs text-slate-400 flex items-start gap-2.5 mt-2">
+                    <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                     <span>
-                      Điểm số Matching được tính toán tự động và liên tục từ 4 biến:{" "}
-                      <strong className="text-indigo-900">Thời gian (35%)</strong>,{" "}
-                      <strong className="text-emerald-900">Vị trí (25%)</strong>,{" "}
-                      <strong className="text-purple-900">Kỹ năng (25%)</strong> và{" "}
-                      <strong className="text-amber-900">Mức lương (15%)</strong> theo tiêu chuẩn PRD FR-6.
+                      Matching Engine 4 biến:{" "}
+                      <strong className="text-slate-200">Thời gian (35%)</strong>,{" "}
+                      <strong className="text-slate-200">Vị trí (25%)</strong>,{" "}
+                      <strong className="text-slate-200">Kỹ năng (25%)</strong>,{" "}
+                      <strong className="text-slate-200">Mức lương (15%)</strong>.
                     </span>
                   </div>
                 </div>

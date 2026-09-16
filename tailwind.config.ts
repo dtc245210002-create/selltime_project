@@ -9,53 +9,54 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: "#4F46E5",
-          hover: "#4338CA",
-          light: "#EEF2FF",
-        },
-        secondary: {
-          DEFAULT: "#0EA5E9",
-          hover: "#0284C7",
-          light: "#F0F9FF",
-        },
-        "accent-ai": {
-          DEFAULT: "#8B5CF6",
+        brand: {
+          DEFAULT: "#8B5CF6", // Refined Purple Brand Accent
           hover: "#7C3AED",
-          light: "#F5F3FF",
-        },
-        "work-parttime": {
-          DEFAULT: "#10B981",
-          light: "#ECFDF5",
-        },
-        "work-fulltime": {
-          DEFAULT: "#3B82F6",
-          light: "#EFF6FF",
-        },
-        "work-gig": {
-          DEFAULT: "#F59E0B",
-          light: "#FFFBEB",
+          subtle: "rgba(139, 92, 246, 0.12)",
+          border: "rgba(139, 92, 246, 0.25)",
         },
         surface: {
-          bg: "#F8FAFC",
-          card: "#FFFFFF",
-          border: "#E2E8F0",
+          base: "#090D16", // Deep Dark Page Background
+          card: "#111726", // Card / Panel Surface
+          subtle: "#161F33", // Elevated / Input Surface
+          hover: "#1C263D", // Hover State
+          border: "#1F2A3F", // Crisp Border
+          "border-subtle": "#162032",
         },
-        content: {
-          primary: "#0F172A",
-          secondary: "#475569",
-          muted: "#94A3B8",
+        text: {
+          primary: "#F8FAFC",
+          secondary: "#CBD5E1",
+          muted: "#64748B",
+          dim: "#475569",
         },
+        wage: {
+          DEFAULT: "#10B981", // Crisp Emerald Wage
+          hover: "#059669",
+          subtle: "rgba(16, 185, 129, 0.12)",
+        },
+        sos: {
+          DEFAULT: "#F43F5E", // Urgent Red
+          subtle: "rgba(244, 63, 94, 0.12)",
+        },
+      },
+      borderRadius: {
+        xs: "4px",
+        sm: "6px",
+        md: "6px", // Standard component radius: 6px
+        lg: "8px", // Sub-panel radius: 8px
+        xl: "12px", // Main card / modal radius: 12px
       },
       maxWidth: {
         mobile: "480px",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
       boxShadow: {
-        card: "0 2px 8px -1px rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.04)",
-        floating: "0 10px 25px -5px rgba(79, 70, 229, 0.2), 0 8px 10px -6px rgba(79, 70, 229, 0.1)",
+        flat: "0 1px 2px 0 rgba(0, 0, 0, 0.25)",
+        card: "0 2px 8px -1px rgba(0, 0, 0, 0.35)",
+        modal: "0 20px 40px -10px rgba(0, 0, 0, 0.6)",
       },
     },
   },

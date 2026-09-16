@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Copy,
   ExternalLink,
+} from "lucide-react";
 import { Shift, User, ShiftPeriod } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
 

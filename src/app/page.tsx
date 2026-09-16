@@ -24,7 +24,7 @@ import {
   MOCK_EMPLOYER_USER,
 } from "../application/store";
 import { rankShiftsForCandidate } from "../domain/matching-engine";
-import { CandidateFilterCriteria, CandidateProfile, Shift, User as UserType, UserRole } from "../domain/types";
+import { CandidateFilterCriteria, CandidateProfile, EmployerProfile, Shift, User as UserType, UserRole } from "../domain/types";
 import { Sparkles, Info, Bot } from "lucide-react";
 import { ViewModeProvider, useViewMode } from "../components/ViewModeContext";
 
@@ -46,6 +46,11 @@ function HomeContent() {
   // Quản lý hồ sơ ứng viên (Immutable State)
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>({
     ...MOCK_CANDIDATE_PROFILE,
+  });
+
+  // Quản lý hồ sơ nhà tuyển dụng (Mutable State)
+  const [employerProfile, setEmployerProfile] = useState<EmployerProfile>({
+    ...MOCK_EMPLOYER_PROFILE,
   });
 
   // State quản lý Checkin và Checkout Escrow
@@ -164,6 +169,31 @@ function HomeContent() {
     }));
   };
 
+  // Cập nhật hồ sơ sinh viên
+  const handleUpdateCandidateProfile = (updated: CandidateProfile) => {
+    setCandidateProfile(updated);
+  };
+
+  const handleUpdateCandidateUser = (updated: Partial<UserType>) => {
+    setCurrentUser((prev) => (prev ? { ...prev, ...updated } : null));
+  };
+
+  // Cập nhật hồ sơ chủ quán
+  const handleUpdateEmployerProfile = (updated: EmployerProfile) => {
+    setEmployerProfile(updated);
+    setShifts((prev) =>
+      prev.map((s) =>
+        s.employer_id === (currentUser?.id || MOCK_EMPLOYER_USER.id)
+          ? { ...s, employer_name: updated.company_name }
+          : s
+      )
+    );
+  };
+
+  const handleUpdateEmployerUser = (updated: Partial<UserType>) => {
+    setCurrentUser((prev) => (prev ? { ...prev, ...updated } : null));
+  };
+
   // Ca làm việc đã ứng tuyển
   const appliedShiftsList = useMemo(() => {
     return shifts.filter((s) => appliedShiftIds.includes(s.id));
@@ -183,8 +213,8 @@ function HomeContent() {
         <RoleSwitcher
           currentRole={currentRole}
           onRoleChange={handleRoleChange}
-          candidateName={MOCK_CANDIDATE_USER.full_name}
-          employerName={MOCK_EMPLOYER_PROFILE.company_name}
+          candidateName={currentUser && currentUser.role === "CANDIDATE" ? currentUser.full_name : MOCK_CANDIDATE_USER.full_name}
+          employerName={employerProfile.company_name}
         />
 
         {/* NỘI DUNG VAI TRÒ CHỦ QUÁN (EMPLOYER) THEO 4 TAB */}
@@ -222,8 +252,10 @@ function HomeContent() {
             {activeTab === "profile" && (
               <div className="max-w-2xl mx-auto w-full">
                 <EmployerProfileTab
-                  user={currentUser || MOCK_EMPLOYER_USER}
-                  profile={MOCK_EMPLOYER_PROFILE}
+                  user={currentUser && currentUser.role === "EMPLOYER" ? currentUser : MOCK_EMPLOYER_USER}
+                  profile={employerProfile}
+                  onUpdateProfile={handleUpdateEmployerProfile}
+                  onUpdateUser={handleUpdateEmployerUser}
                 />
               </div>
             )}
@@ -337,10 +369,12 @@ function HomeContent() {
             {activeTab === "profile" && (
               <div className="max-w-2xl mx-auto w-full">
                 <ProfileTab
-                  user={currentUser || MOCK_CANDIDATE_USER}
+                  user={currentUser && currentUser.role === "CANDIDATE" ? currentUser : MOCK_CANDIDATE_USER}
                   profile={candidateProfile}
                   walletBalance={walletBalance}
                   onWithdrawFunds={(amt) => setWalletBalance(0)}
+                  onUpdateProfile={handleUpdateCandidateProfile}
+                  onUpdateUser={handleUpdateCandidateUser}
                 />
               </div>
             )}

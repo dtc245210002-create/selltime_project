@@ -21,8 +21,7 @@ import {
   ShieldCheck,
   Copy,
   ExternalLink,
-} from "lucide-react";
-import { Shift, User } from "../domain/types";
+import { Shift, User, ShiftPeriod } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
 
 interface EmployerDashboardProps {
@@ -56,6 +55,9 @@ export function EmployerDashboard({
   const [newTitle, setNewTitle] = useState("");
   const [newWage, setNewWage] = useState(30000);
   const [newHours, setNewHours] = useState(4);
+  const [newStart, setNewStart] = useState("18:00");
+  const [newEnd, setNewEnd] = useState("22:00");
+  const [newPeriod, setNewPeriod] = useState<ShiftPeriod>("EVENING");
   const [isSos, setIsSos] = useState(false);
 
   const handleCreate = (e: React.FormEvent) => {
@@ -72,10 +74,10 @@ export function EmployerDashboard({
       description: "Ca làm việc đăng từ chế độ Nhà tuyển dụng Sell Time",
       work_type: "PART_TIME",
       shift_date: "Hôm nay",
-      shift_start: "18:00",
-      shift_end: "22:00",
+      shift_start: newStart,
+      shift_end: newEnd,
       duration_hours: newHours,
-      period: "EVENING",
+      period: newPeriod,
       hourly_wage: newWage,
       total_budget: newWage * newHours,
       required_candidates: 1,
@@ -591,6 +593,9 @@ export function EmployerDashboard({
                     setNewTitle("Phục vụ bàn ca tối The Cuppa (18h-22h)");
                     setNewWage(32000);
                     setNewHours(4);
+                    setNewStart("18:00");
+                    setNewEnd("22:00");
+                    setNewPeriod("EVENING");
                     setIsSos(false);
                   }}
                   className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
@@ -603,6 +608,9 @@ export function EmployerDashboard({
                     setNewTitle("Pha chế đồ uống ca sáng (7h-11h)");
                     setNewWage(30000);
                     setNewHours(4);
+                    setNewStart("07:00");
+                    setNewEnd("11:00");
+                    setNewPeriod("MORNING");
                     setIsSos(false);
                   }}
                   className="text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors"
@@ -615,6 +623,9 @@ export function EmployerDashboard({
                     setNewTitle("🚨 GẤP: Bù nhân viên ốm ca tối");
                     setNewWage(35000);
                     setNewHours(4);
+                    setNewStart("18:00");
+                    setNewEnd("22:00");
+                    setNewPeriod("EVENING");
                     setIsSos(true);
                   }}
                   className="text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors"
@@ -637,6 +648,54 @@ export function EmployerDashboard({
                   className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   required
                 />
+              </div>
+
+              {/* Khung ca & Giờ làm việc */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Khung ca:
+                  </label>
+                  <select
+                    value={newPeriod}
+                    onChange={(e) => {
+                      const p = e.target.value as ShiftPeriod;
+                      setNewPeriod(p);
+                      if (p === "MORNING") { setNewStart("07:00"); setNewEnd("11:00"); }
+                      else if (p === "AFTERNOON") { setNewStart("13:00"); setNewEnd("17:00"); }
+                      else if (p === "EVENING") { setNewStart("18:00"); setNewEnd("22:00"); }
+                      else if (p === "NIGHT") { setNewStart("22:00"); setNewEnd("02:00"); }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="MORNING">🌅 Sáng (07h-11h)</option>
+                    <option value="AFTERNOON">☀️ Chiều (13h-17h)</option>
+                    <option value="EVENING">🌙 Tối (18h-22h)</option>
+                    <option value="NIGHT">🌌 Đêm (22h-02h)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Thời gian bắt đầu - kết thúc:
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newStart}
+                      onChange={(e) => setNewStart(e.target.value)}
+                      placeholder="18:00"
+                      className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-center font-mono font-bold text-slate-800"
+                    />
+                    <span className="text-slate-400 font-bold">-</span>
+                    <input
+                      type="text"
+                      value={newEnd}
+                      onChange={(e) => setNewEnd(e.target.value)}
+                      placeholder="22:00"
+                      className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl p-2.5 text-center font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

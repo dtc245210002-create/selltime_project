@@ -37,7 +37,7 @@ export default function Home() {
 }
 
 function HomeContent() {
-  const { isMobile } = useViewMode();
+  const { isMobile, viewMode } = useViewMode();
   // Quản lý phiên đăng nhập (Session)
   const [currentUser, setCurrentUser] = useState<UserType | null>(MOCK_CANDIDATE_USER);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -232,20 +232,40 @@ function HomeContent() {
           /* NỘI DUNG VAI TRÒ SINH VIÊN (CANDIDATE) THEO 4 TAB */
           <>
             {activeTab === "explore" && (
-              <div className={`flex ${isMobile ? "flex-col p-0 gap-3" : "flex-row gap-6 p-6"}`}>
+              <div className={`flex ${viewMode === "mobile" ? "flex-col p-0 gap-3" : "flex-col lg:flex-row gap-6 p-4 sm:p-6"}`}>
                 {/* CỘT TRÁI: Widget Lọc Thời Gian Rảnh (Time-First Search Core) */}
-                <div className={`w-full ${isMobile ? "" : "w-[380px] shrink-0"}`}>
-                  <div className={`${isMobile ? "rounded-none" : "sticky top-24 rounded-3xl"} overflow-hidden shadow-sm`}>
+                <div className={`w-full ${viewMode === "mobile" ? "" : "lg:w-[380px] shrink-0"}`}>
+                  <div className={`${viewMode === "mobile" ? "rounded-none" : "sticky top-24 rounded-3xl"} overflow-hidden shadow-sm`}>
                     <TimeSliderWidget
                       criteria={criteria}
                       onChange={setCriteria}
                       matchCount={rankedShifts.length}
                     />
                   </div>
+
+                  {/* Chỉ dẫn cuộn nhanh xuống danh sách ca cho màn hình hẹp */}
+                  <div className="p-3 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById("shifts-feed-section");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-between transition-all active:scale-98"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>Xem {rankedShifts.length} ca làm việc phù hợp</span>
+                      </span>
+                      <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-md font-mono">
+                        Cuộn xem ngay ↓
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* CỘT PHẢI: Feed Danh Sách Ca Làm Khớp Nối Đa Biến */}
-                <div className={`flex-1 ${isMobile ? "p-3" : "p-0"} space-y-4`}>
+                <div id="shifts-feed-section" className={`flex-1 ${viewMode === "mobile" ? "p-3" : "p-0"} space-y-4`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-indigo-600" />

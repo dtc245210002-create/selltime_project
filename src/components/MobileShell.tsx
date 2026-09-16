@@ -204,7 +204,7 @@ export function MobileShell({
           </div>
 
           {/* Desktop Content Container */}
-          <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200">
             {children}
           </div>
         </div>

@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Sell Time Platform Architecture",
+    "subtitle": "Time-First Job Marketplace connecting students and local employers with Instant Escrow",
+    "output": "selltime-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "overview",
+        "label": "Full Architecture Overview",
+        "focus": [
+          "users",
+          "client",
+          "api_routes",
+          "matching_engine",
+          "state_store"
+        ],
+        "note": "End-to-end flow from candidate discovery to shift matching."
+      },
+      {
+        "id": "trust-and-escrow",
+        "label": "Trust, Escrow & Check-in",
+        "focus": [
+          "client",
+          "escrow",
+          "geofence",
+          "trust_battery"
+        ],
+        "note": "Geofencing verification and VietQR escrow fund locking and release."
+      },
+      {
+        "id": "realtime-and-ai",
+        "label": "Real-time Chat & AI Coach",
+        "focus": [
+          "client",
+          "api_routes",
+          "chat_hub",
+          "ai_coach"
+        ],
+        "note": "SSE communication and Gemini STAR interview simulation."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Users & Devices",
+      "sublabel": "Student & Employer",
+      "pos": [
+        40,
+        280
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "Next.js 15 PWA",
+      "sublabel": "React 19 + Tailwind",
+      "pos": [
+        240,
+        280
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "brand": "next-js"
+    },
+    {
+      "id": "time_slider",
+      "type": "frontend",
+      "label": "Time Slider Core",
+      "sublabel": "Time-First Filters",
+      "pos": [
+        240,
+        140
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "api_routes",
+      "type": "backend",
+      "label": "Serverless APIs",
+      "sublabel": "Next.js Dynamic Handlers",
+      "pos": [
+        450,
+        280
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "ai_coach",
+      "type": "cloud",
+      "label": "Gemini Flash AI",
+      "sublabel": "STAR Interview & CV",
+      "pos": [
+        450,
+        140
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "Web Speech API"
+    },
+    {
+      "id": "chat_hub",
+      "type": "messagebus",
+      "label": "SSE Chat Hub",
+      "sublabel": "Real-time Messaging",
+      "pos": [
+        450,
+        420
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "matching_engine",
+      "type": "backend",
+      "label": "Matching Engine",
+      "sublabel": "4-Variable AHP Model",
+      "pos": [
+        670,
+        280
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "PRD FR-6"
+    },
+    {
+      "id": "escrow",
+      "type": "security",
+      "label": "Escrow PayOS",
+      "sublabel": "NAPAS 24/7 VietQR",
+      "pos": [
+        670,
+        140
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "Instant Payout"
+    },
+    {
+      "id": "geofence",
+      "type": "security",
+      "label": "Geofencing & QR",
+      "sublabel": "GPS 100m + Fallback PIN",
+      "pos": [
+        670,
+        420
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "state_store",
+      "type": "database",
+      "label": "State & Data Store",
+      "sublabel": "SQL Server / Mock DB",
+      "pos": [
+        890,
+        280
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "trust_battery",
+      "type": "backend",
+      "label": "PartyMode Battery",
+      "sublabel": "Trust Score Engine",
+      "pos": [
+        890,
+        420
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "No-show Guard"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client Layer (Responsive Dual View)",
+      "wraps": [
+        "client",
+        "time_slider"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Application & AI Services",
+      "wraps": [
+        "api_routes",
+        "ai_coach",
+        "chat_hub",
+        "matching_engine"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Trust, Escrow & Persistence Perimeter",
+      "wraps": [
+        "escrow",
+        "geofence",
+        "state_store",
+        "trust_battery"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-users-client",
+      "from": "users",
+      "to": "client",
+      "label": "HTTPS / PWA",
+      "variant": "emphasis"
+    },
+    {
+      "id": "conn-client-slider",
+      "from": "client",
+      "to": "time_slider",
+      "label": "Filter state",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn-client-api",
+      "from": "client",
+      "to": "api_routes",
+      "label": "REST / JSON"
+    },
+    {
+      "id": "conn-client-chat",
+      "from": "client",
+      "to": "chat_hub",
+      "label": "SSE stream",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "conn-api-ai",
+      "from": "api_routes",
+      "to": "ai_coach",
+      "label": "Gemini API",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn-api-match",
+      "from": "api_routes",
+      "to": "matching_engine",
+      "label": "Rank shifts"
+    },
+    {
+      "id": "conn-match-db",
+      "from": "matching_engine",
+      "to": "state_store",
+      "label": "SQL query"
+    },
+    {
+      "id": "conn-match-escrow",
+      "from": "matching_engine",
+      "to": "escrow",
+      "label": "Escrow guarantee",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "conn-client-geofence",
+      "from": "client",
+      "to": "geofence",
+      "label": "GPS & QR",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "conn-geofence-battery",
+      "from": "geofence",
+      "to": "trust_battery",
+      "label": "Score update"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Client & Discovery Layer",
+      "items": [
+        "Responsive Dual View (Full Desktop & Smartphone 420px frame)",
+        "Time-First Core with intuitive hour slider and NLP filter"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Matching & Real-Time Engine",
+      "items": [
+        "4-Variable AHP algorithm (Time 35%, Distance 25%, Skill 25%, Wage 15%)",
+        "Real-Time SSE multi-device chat with instant optimistic delivery"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trust & Escrow Perimeter",
+      "items": [
+        "GPS Geofencing 100m + Fallback PIN for fail-safe check-in",
+        "Automated Escrow with VietQR PayOS 3-second instant disbursement",
+        "PartyMode Trust Battery penalizing no-shows and rewarding reliability"
+      ]
+    }
+  ]
+}

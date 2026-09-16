@@ -224,6 +224,51 @@ export function EmployerDashboard({
               Đăng Ca Làm Việc Mới
             </h3>
 
+            {/* Shift Templates (Mẫu ca định kỳ) */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500 block">
+                💡 Chọn nhanh mẫu ca định kỳ:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle("Phục vụ bàn ca tối The Cuppa (18h-22h)");
+                    setNewWage(32000);
+                    setNewHours(4);
+                    setIsSos(false);
+                  }}
+                  className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
+                >
+                  ☕ Phục vụ tối (4h - 32k)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle("Pha chế đồ uống ca sáng (7h-11h)");
+                    setNewWage(30000);
+                    setNewHours(4);
+                    setIsSos(false);
+                  }}
+                  className="text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors"
+                >
+                  🥤 Pha chế sáng (4h - 30k)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle("🚨 GẤP: Bù nhân viên ốm ca tối");
+                    setNewWage(35000);
+                    setNewHours(4);
+                    setIsSos(true);
+                  }}
+                  className="text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200 transition-colors"
+                >
+                  🚨 Tuyển SOS (+30k)
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">

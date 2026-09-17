@@ -1,0 +1,75 @@
+# Sprint Status for Sell Time Platform (BMAD Method Core)
+generated: 09-17-2026 08:30
+last_updated: 09-17-2026 08:30
+project: Sell Time Platform
+project_key: SELLTIME
+tracking_system: file-system
+story_location: "_bmad-output/implementation-artifacts/stories"
+
+development_status:
+  epic-1-time-first-discovery: done
+  1-1-time-slider-widget: done
+  1-2-nlp-smart-search: done
+  1-3-ahp-matching-engine: done
+  1-4-one-tap-apply: done
+  epic-1-retrospective: done
+
+  epic-2-sos-shifts: done
+  2-1-post-sos-shift-bonus: done
+  2-2-dispatch-nearby-candidates: done
+  epic-2-retrospective: done
+
+  epic-3-employer-portal: done
+  3-1-shift-templates: done
+  3-2-reverse-hiring-explorer: done
+  3-3-one-tap-approve-escrow: done
+  epic-3-retrospective: done
+
+  epic-4-escrow-settlement: in-progress
+  4-1-vietqr-payos-held-escrow: done
+  4-2-instant-release-wallet: done
+  4-3-bank-payout-withdrawal: done
+  4-4-escrow-ledger-history: ready-for-dev
+  epic-4-retrospective: optional
+
+  epic-5-anti-fraud-checkin: done
+  5-1-haversine-gps-geofence-100m: done
+  5-2-qr-counter-checkin: done
+  5-3-backup-venue-pin-fallback: done
+  5-4-realtime-shift-timer: done
+  epic-5-retrospective: done
+
+  epic-6-partymode-trust-battery: done
+  6-1-trust-battery-gauge: done
+  6-2-charge-battery-completion: done
+  6-3-drain-battery-cancellation: done
+  epic-6-retrospective: done
+
+  epic-7-ai-coach-star: done
+  7-1-gemini-star-interview: done
+  7-2-webspeech-voice-multilingual: done
+  7-3-cv-one-tap-parser: done
+  epic-7-retrospective: done
+
+  epic-8-realtime-chat: done
+  8-1-sse-messaging-polling-fallback: done
+  8-2-quick-replies: done
+  8-3-application-stepper: done
+  8-4-google-maps-directions: done
+  epic-8-retrospective: done
+
+  epic-9-profile-management: done
+  9-1-candidate-skills-availability: done
+  9-2-recurring-schedule-matrix: done
+  9-3-employer-profile-pin-update: done
+  epic-9-retrospective: done
+
+action_items:
+  - epic: 4
+    action: "Triển khai Webhook PayOS có xác thực mã bảo mật HMAC-SHA256"
+    owner: "Dev & Security Lead"
+    status: in-progress
+  - epic: 5
+    action: "Nâng cấp mã PIN quầy sang OTP động xoay vòng 60 giây"
+    owner: "Security Architect"
+    status: open

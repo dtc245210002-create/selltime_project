@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Compass,
   CalendarCheck2,
@@ -14,6 +14,8 @@ import {
   X,
   LogIn,
   LogOut,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { User as UserType } from "../domain/types";
 import { useViewMode } from "./ViewModeContext";
@@ -38,8 +40,16 @@ export function MobileShell({
   onLogout,
 }: MobileShellProps) {
   const [currentTime] = useState("19:42");
-  const { viewMode, setViewMode } = useViewMode();
+  const { viewMode, setViewMode, theme, toggleTheme } = useViewMode();
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const phoneScrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset phone container scroll cleanly when changing tabs
+  useEffect(() => {
+    if (phoneScrollRef.current) {
+      phoneScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [activeTab]);
 
   const tabs = [
     { id: "explore", label: "Khám phá", icon: Compass },
@@ -51,7 +61,7 @@ export function MobileShell({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-900 selection:text-purple-200">
       {/* ========================================================= */}
-      {/* TOP HEADER: Clean Dark Bar with Subtle Purple Brand       */}
+      {/* TOP HEADER: Clean Bar with Theme & Mode Controls          */}
       {/* ========================================================= */}
       <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 shrink-0 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
@@ -75,8 +85,21 @@ export function MobileShell({
             </div>
           </div>
 
-          {/* Controls: Mode toggle, PWA & Auth */}
+          {/* Controls: Theme toggle, View mode switcher, PWA & Auth */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Theme Toggle Button (Light / Dark) */}
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center shadow-sm"
+              title={theme === "dark" ? "Chuyển sang Giao diện Sáng (Light Mode)" : "Chuyển sang Giao diện Tối (Dark Mode)"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+              ) : (
+                <Moon className="w-4 h-4 text-purple-600 hover:-rotate-12 transition-transform" />
+              )}
+            </button>
+
             {/* View Mode Switcher (Web / Mobile) */}
             <div className="bg-slate-950 p-1 rounded-lg flex items-center border border-slate-800">
               <button
@@ -241,7 +264,7 @@ export function MobileShell({
             </div>
 
             {/* Scrollable Content inside phone */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 scrollbar-none bg-slate-950">
+            <div ref={phoneScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden pb-16 scrollbar-none bg-slate-950">
               {children}
             </div>
 

@@ -41,3 +41,264 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #2D3D5B;
 }
+
+/* ========================================================= */
+/* LIGHT THEME STYLES (Apple & Airbnb Inspired Clean Aesthetic) */
+/* ========================================================= */
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* Base Surfaces & Containers (Wildcards cover all /95, /90, /80, /70, /60, /50, /40, /20 opacities) */
+html.light [class*="bg-slate-950"] {
+  background-color: #F8FAFC !important;
+}
+
+html.light [class*="bg-slate-900"] {
+  background-color: #FFFFFF !important;
+}
+
+/* Specific semi-transparent overlays on light mode */
+html.light [class*="bg-slate-900/95"],
+html.light [class*="bg-slate-900/90"],
+html.light [class*="bg-slate-900/80"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+html.light [class*="bg-slate-900/60"],
+html.light [class*="bg-slate-900/50"],
+html.light [class*="bg-slate-900/40"] {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+}
+
+/* Secondary Surfaces, Tabs, Pills & Containers */
+html.light [class*="bg-slate-850"],
+html.light [class*="bg-slate-800"] {
+  background-color: #F1F5F9 !important;
+}
+
+html.light [class*="bg-slate-750"],
+html.light [class*="bg-slate-700"] {
+  background-color: #E2E8F0 !important;
+}
+
+/* Surface design tokens */
+html.light .bg-surface-base {
+  background-color: #F8FAFC !important;
+}
+html.light .bg-surface-card {
+  background-color: #FFFFFF !important;
+}
+html.light .bg-surface-subtle {
+  background-color: #F1F5F9 !important;
+}
+html.light .bg-surface-hover {
+  background-color: #E2E8F0 !important;
+}
+
+/* All Borders & Dividers */
+html.light [class*="border-slate-800"],
+html.light .border-surface-border,
+html.light .border-surface-border-subtle {
+  border-color: #E2E8F0 !important;
+}
+
+html.light [class*="border-slate-700"] {
+  border-color: #CBD5E1 !important;
+}
+
+html.light [class*="border-slate-600"] {
+  border-color: #94A3B8 !important;
+}
+
+html.light [class*="divide-slate-800"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #E2E8F0 !important;
+}
+
+html.light [class*="divide-slate-700"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #CBD5E1 !important;
+}
+
+/* Card Cover Image Gradients in Light Mode */
+html.light .from-slate-900 {
+  --tw-gradient-from: #FFFFFF var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+html.light [class*="via-slate-900"] {
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(255, 255, 255, 0.4) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+/* Text Hierarchy */
+html.light .text-white {
+  color: #0F172A !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: #1E293B !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748B !important;
+}
+
+html.light .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+html.light .text-slate-600 {
+  color: #64748B !important;
+}
+
+/* CRITICAL: Keep Text Pure White on Solid Colored Action Buttons, Logos, and Badges */
+html.light .bg-purple-600,
+html.light .bg-purple-600 *,
+html.light .bg-purple-500,
+html.light .bg-purple-500 *,
+html.light .bg-rose-600,
+html.light .bg-rose-600 *,
+html.light .bg-rose-500,
+html.light .bg-rose-500 *,
+html.light .bg-emerald-600,
+html.light .bg-emerald-600 *,
+html.light .bg-emerald-500,
+html.light .bg-emerald-500 *,
+html.light .bg-blue-600,
+html.light .bg-blue-600 *,
+html.light [class*="bg-purple-600"] *,
+html.light [class*="bg-rose-600"] *,
+html.light [class*="bg-emerald-600"] *,
+html.light button.bg-purple-600,
+html.light button.bg-purple-500,
+html.light button.bg-rose-600,
+html.light button.bg-emerald-600 {
+  color: #FFFFFF !important;
+}
+
+/* Brand Purple Badges & Accents in Light Mode */
+html.light [class*="bg-purple-950"] {
+  background-color: #F3E8FF !important;
+}
+html.light [class*="border-purple-800"],
+html.light [class*="border-purple-700"] {
+  border-color: #DDD6FE !important;
+}
+html.light .text-purple-400,
+html.light .text-purple-300 {
+  color: #7C3AED !important;
+}
+
+/* Wage & Escrow Emerald in Light Mode */
+html.light [class*="bg-emerald-950"] {
+  background-color: #D1FAE5 !important;
+}
+html.light [class*="border-emerald-800"],
+html.light [class*="border-emerald-700"] {
+  border-color: #A7F3D0 !important;
+}
+html.light .text-emerald-400,
+html.light .text-emerald-300 {
+  color: #047857 !important;
+}
+
+/* Urgent SOS / Rose in Light Mode */
+html.light [class*="bg-rose-950"] {
+  background-color: #FFE4E6 !important;
+}
+html.light [class*="border-rose-800"],
+html.light [class*="border-rose-700"] {
+  border-color: #FECDD3 !important;
+}
+html.light .text-rose-400,
+html.light .text-rose-300 {
+  color: #E11D48 !important;
+}
+
+/* Warning & Gold / Amber in Light Mode */
+html.light [class*="bg-amber-950"] {
+  background-color: #FEF3C7 !important;
+}
+html.light [class*="border-amber-800"],
+html.light [class*="border-amber-700"] {
+  border-color: #FDE68A !important;
+}
+html.light .text-amber-400,
+html.light .text-amber-300 {
+  color: #D97706 !important;
+}
+
+/* Interactive & Hover states */
+html.light [class*="hover:bg-slate-800"]:hover,
+html.light [class*="hover:bg-slate-850"]:hover {
+  background-color: #E2E8F0 !important;
+}
+html.light [class*="hover:bg-slate-700"]:hover,
+html.light [class*="hover:bg-slate-750"]:hover {
+  background-color: #CBD5E1 !important;
+}
+html.light [class*="hover:border-slate-700"]:hover {
+  border-color: #94A3B8 !important;
+}
+html.light [class*="hover:text-white"]:hover:not(.bg-purple-600):not(.bg-rose-600) {
+  color: #0F172A !important;
+}
+
+/* Inputs & Forms in Light Mode */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.light textarea,
+html.light select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Range input sliders track in light mode */
+html.light input[type="range"] {
+  background-color: #E2E8F0 !important;
+}
+
+/* Modal Backdrops & Overlays in Light Mode */
+html.light .fixed.inset-0.bg-black\/80,
+html.light .fixed.inset-0.bg-black\/70,
+html.light .fixed.inset-0.bg-black\/60,
+html.light [class*="bg-black/"] {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Light Mode Shadows for depth */
+html.light .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+html.light .shadow-md,
+html.light .shadow-flat {
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+}
+html.light .shadow-xl,
+html.light .shadow-card,
+html.light .shadow-modal {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 6px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Light Mode Scrollbars */
+html.light ::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

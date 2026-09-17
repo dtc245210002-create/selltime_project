@@ -116,7 +116,16 @@ export function MessagesTab({
   const [mobileView, setMobileView] = useState<"list" | "chat" | "details">("list");
   const [isConnected, setIsConnected] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (smooth = true) => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    }
+  };
 
   const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
 
@@ -145,7 +154,15 @@ export function MessagesTab({
       if (data && data.success && Array.isArray(data.data)) {
         setIsConnected(true);
         if (convId === activeConvId) {
-          setMessages(data.data);
+          setMessages((prev) => {
+            if (
+              prev.length === data.data.length &&
+              prev[prev.length - 1]?.id === data.data[data.data.length - 1]?.id
+            ) {
+              return prev;
+            }
+            return data.data;
+          });
         }
 
         if (data.data.length > 0) {
@@ -182,6 +199,11 @@ export function MessagesTab({
     }
 
     fetchMessages(activeConvId);
+
+    // Initial clean scroll inside chat container only
+    setTimeout(() => {
+      scrollToBottom(false);
+    }, 60);
 
     let es: EventSource | null = null;
     try {
@@ -221,7 +243,7 @@ export function MessagesTab({
 
     const interval = setInterval(() => {
       fetchMessages(activeConvId, true);
-    }, 1500);
+    }, 2500);
 
     return () => {
       if (es) es.close();
@@ -229,9 +251,16 @@ export function MessagesTab({
     };
   }, [activeConvId]);
 
+  // Only scroll inner container when new messages arrive AND user is already at the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (chatScrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+      if (isNearBottom) {
+        scrollToBottom(true);
+      }
+    }
+  }, [messages.length]);
 
   const handleSend = async (contentToSend?: string) => {
     const text = (contentToSend || inputVal).trim();
@@ -262,6 +291,7 @@ export function MessagesTab({
       [activeConvId]: { text: newMsg.content, time: newMsg.created_at },
     }));
     setInputVal("");
+    setTimeout(() => scrollToBottom(true), 30);
 
     try {
       await fetch("/api/messages", {
@@ -469,7 +499,7 @@ export function MessagesTab({
       </div>
 
       {/* Chat messages feed */}
-      <div className="flex-1 p-3.5 space-y-2.5 overflow-y-auto">
+      <div ref={chatScrollRef} className="flex-1 p-3.5 space-y-2.5 overflow-y-auto">
         <div className="text-center my-1">
           <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-0.5 rounded-md">
             Ca làm: {activeConv.shift.title} ({activeConv.shift.shift_start} - {activeConv.shift.shift_end})
@@ -523,7 +553,6 @@ export function MessagesTab({
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Gợi ý nhanh (Quick replies) */}

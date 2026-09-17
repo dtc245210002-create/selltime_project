@@ -18,6 +18,10 @@ import {
   ShieldCheck,
   Copy,
   X,
+  ArrowDownLeft,
+  ArrowUpRight,
+  RefreshCw,
+  Filter,
 } from "lucide-react";
 import { Shift, User, ShiftPeriod } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
@@ -48,6 +52,58 @@ export function EmployerDashboard({
   const [qrAmount, setQrAmount] = useState(153000);
   const [qrContent, setQrContent] = useState("SELLTIME SOS 01");
   const [copiedPin, setCopiedPin] = useState(false);
+  const [escrowFilter, setEscrowFilter] = useState<"ALL" | "HELD" | "RELEASED" | "REFUNDED">("ALL");
+
+  const escrowLedgerData = [
+    {
+      id: "tx_01",
+      code: "ESC-20260916-01",
+      type: "HELD" as const,
+      title: "Ký quỹ ca SOS #shift_sos_01",
+      detail: "The Cuppa • Pha chế khẩn cấp 4h",
+      counterparty: "Nguyễn Đức Huy (TNUT)",
+      amount: -153000,
+      date: "16/09/2026 17:30",
+      statusBadge: "Đang giữ Escrow",
+      statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    },
+    {
+      id: "tx_02",
+      code: "ESC-20260915-02",
+      type: "RELEASED" as const,
+      title: "Giải ngân ca Phục vụ tối #shift_02",
+      detail: "Hoàn thành 5 sao • Quẹt QR hợp lệ",
+      counterparty: "Trần Mai Anh (ĐHSP)",
+      amount: -120000,
+      date: "15/09/2026 22:15",
+      statusBadge: "Đã giải ngân VietQR",
+      statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      id: "tx_03",
+      code: "ESC-20260915-01",
+      type: "TOPUP" as const,
+      title: "Nạp quỹ bảo chứng PayOS",
+      detail: "Napas 24/7 • MBBank 0988888888",
+      counterparty: "Hệ thống PayOS Gateway",
+      amount: 1000000,
+      date: "15/09/2026 14:00",
+      statusBadge: "Nạp thành công",
+      statusColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      id: "tx_04",
+      code: "ESC-20260914-03",
+      type: "REFUNDED" as const,
+      title: "Hoàn tiền ký quỹ ca Hủy hợp lệ",
+      detail: "Ứng viên báo bận trước 16h (miễn phạt)",
+      counterparty: "Quỹ hoàn trả Sell Time",
+      amount: 120000,
+      date: "14/09/2026 09:10",
+      statusBadge: "Đã hoàn quỹ",
+      statusColor: "text-slate-400 bg-slate-800/40 border-slate-700/40",
+    },
+  ];
 
   // Form states
   const [newTitle, setNewTitle] = useState("");
@@ -456,63 +512,126 @@ export function EmployerDashboard({
       {/* SUB-TAB 4: LỊCH SỬ KÝ QUỸ */}
       {activeSubTab === "history" && (
         <div className="space-y-3">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-              Lịch Sử Giao Dịch Escrow
-            </h3>
-            <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px]">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> PayOS VietQR
+            <div>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                Sổ Cái Ký Quỹ Escrow
+              </h3>
+              <p className="text-[10px] text-slate-400">
+                Minh bạch dòng tiền bảo chứng thù lao ca làm việc
+              </p>
+            </div>
+            <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> PayOS Napas 24/7
             </span>
           </div>
 
-          <div className="space-y-2">
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-md bg-slate-950 border border-slate-800 text-purple-400 flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-white">
-                    Ký quỹ ca SOS #shift_sos_01
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    16/09/2026 • Nguyễn Đức Huy
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold font-mono text-slate-200 block">
-                  -153.000 đ
-                </span>
-                <span className="text-[10px] text-amber-400">
-                  Đang giữ Escrow
-                </span>
+          {/* Quick Metrics KPI Bar */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-slate-900/90 border border-amber-500/20 p-2.5 rounded-lg">
+              <span className="text-[10px] text-slate-400 block">Đang bảo lưu an toàn</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-sm font-bold font-mono text-amber-400">153.000 đ</span>
+                <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
               </div>
             </div>
+            <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-lg">
+              <span className="text-[10px] text-slate-400 block">Tổng thù lao đã giải ngân</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-sm font-bold font-mono text-emerald-400">120.000 đ</span>
+                <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
+              </div>
+            </div>
+          </div>
 
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-md bg-slate-950 border border-slate-800 text-emerald-400 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+            {[
+              { key: "ALL", label: "Tất cả" },
+              { key: "HELD", label: "Tạm giữ (Held)" },
+              { key: "RELEASED", label: "Đã giải ngân" },
+              { key: "REFUNDED", label: "Hoàn trả" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setEscrowFilter(tab.key as any)}
+                className={`px-2.5 py-1 text-[11px] font-medium rounded-md whitespace-nowrap transition-colors ${
+                  escrowFilter === tab.key
+                    ? "bg-purple-600 text-white"
+                    : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Transaction List */}
+          <div className="space-y-2">
+            {escrowLedgerData
+              .filter((item) => {
+                if (escrowFilter === "ALL") return true;
+                return item.type === escrowFilter;
+              })
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-slate-900 p-3 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                        {item.type === "HELD" && <Clock className="w-4 h-4 text-amber-400" />}
+                        {item.type === "RELEASED" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        {item.type === "TOPUP" && <ArrowDownLeft className="w-4 h-4 text-emerald-400" />}
+                        {item.type === "REFUNDED" && <RefreshCw className="w-4 h-4 text-slate-400" />}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-white">
+                          {item.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {item.detail}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                          {item.date} • Đối tác: {item.counterparty}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span
+                        className={`text-xs font-bold font-mono block ${
+                          item.amount > 0 ? "text-emerald-400" : "text-slate-200"
+                        }`}
+                      >
+                        {item.amount > 0 ? `+${item.amount.toLocaleString("vi-VN")} đ` : `${item.amount.toLocaleString("vi-VN")} đ`}
+                      </span>
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium border mt-1 ${item.statusColor}`}
+                      >
+                        {item.statusBadge}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                    <span>Mã GD: {item.code}</span>
+                    <span className="text-slate-400">VietQR NAPAS</span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-white">
-                    Nạp tiền vào ví doanh nghiệp
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    15/09/2026 • Chuyển khoản VietQR
-                  </p>
-                </div>
+              ))}
+
+            {escrowLedgerData.filter((item) => {
+              if (escrowFilter === "ALL") return true;
+              return item.type === escrowFilter;
+            }).length === 0 && (
+              <div className="bg-slate-900/60 p-6 rounded-xl border border-slate-800 text-center space-y-2">
+                <Filter className="w-6 h-6 text-slate-500 mx-auto opacity-60" />
+                <p className="text-xs text-slate-400">
+                  Không tìm thấy giao dịch nào ở trạng thái này.
+                </p>
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold font-mono text-emerald-400 block">
-                  +1.000.000 đ
-                </span>
-                <span className="text-[10px] text-emerald-400">
-                  Thành công
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

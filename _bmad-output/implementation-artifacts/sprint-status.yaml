@@ -25,12 +25,12 @@ development_status:
   3-3-one-tap-approve-escrow: done
   epic-3-retrospective: done
 
-  epic-4-escrow-settlement: in-progress
+  epic-4-escrow-settlement: done
   4-1-vietqr-payos-held-escrow: done
   4-2-instant-release-wallet: done
   4-3-bank-payout-withdrawal: done
-  4-4-escrow-ledger-history: ready-for-dev
-  epic-4-retrospective: optional
+  4-4-escrow-ledger-history: done
+  epic-4-retrospective: done
 
   epic-5-anti-fraud-checkin: done
   5-1-haversine-gps-geofence-100m: done

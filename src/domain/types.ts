@@ -76,6 +76,9 @@ export interface Shift {
   is_sos: boolean;
   sos_bonus_amount?: number;
   required_skills: string[];
+  cover_image?: string;
+  store_perks?: string[];
+  friendly_tags?: string[];
   location_coords: GeoPoint;
   location_address: string;
   status: ShiftStatus;

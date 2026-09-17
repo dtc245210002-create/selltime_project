@@ -56,10 +56,10 @@ export function CheckoutModal({
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
-                Hoàn Thành Ca & Ký Nhận Escrow
+                Hoàn Thành Ca & Nhận Tiền Ngay 💵
               </h3>
               <p className="text-xs text-slate-400">
-                Giải ngân thù lao tức thì qua VietQR PayOS
+                Sell Time cam kết bảo chứng thù lao chuyển thẳng vào ví bạn
               </p>
             </div>
           </div>
@@ -120,10 +120,10 @@ export function CheckoutModal({
                 </div>
                 <div className="text-xs">
                   <span className="font-bold text-white block">
-                    PartyMode: Tăng +2% Pin Uy Tín
+                    Được cộng +3% Pin Uy Tín Sinh Viên 🔋
                   </span>
                   <span className="text-slate-400 text-[11px] leading-relaxed">
-                    Hoàn thành đúng giờ, không bùng ca giúp bạn luôn được ưu tiên nhận các ca SOS thù lao cao nhất.
+                    Hoàn thành ca tốt và đúng hẹn giúp bạn luôn được ưu tiên nhận các ca thưởng nóng cao nhất!
                   </span>
                 </div>
               </div>
@@ -131,7 +131,7 @@ export function CheckoutModal({
               {/* Đánh giá chủ cơ sở */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-300 block">
-                  Đánh giá chủ cơ sở & quán làm việc:
+                  Cảm nhận của bạn về buổi làm việc tại quán:
                 </label>
                 <div className="flex justify-center gap-2 py-1">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -169,7 +169,7 @@ export function CheckoutModal({
                 {isProcessing ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Đang giải ngân Escrow qua VietQR...</span>
+                    <span>Sell Time đang chuyển tiền vào ví bạn...</span>
                   </>
                 ) : (
                   <>
@@ -182,39 +182,42 @@ export function CheckoutModal({
           ) : (
             /* TRẠNG THÁI HOÀN TẤT THÀNH CÔNG */
             <div className="text-center py-5 space-y-4 animate-in zoom-in-95">
-              <div className="w-14 h-14 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-950/50">
+                <CheckCircle2 className="w-9 h-9 text-emerald-400" />
               </div>
 
               <div>
-                <h4 className="text-base font-bold text-white">
-                  Giải Ngân Thành Công!
+                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                  🎉 Ting Ting! Tiền Đã Vào Ví
+                </span>
+                <h4 className="text-lg font-bold text-white">
+                  +{totalEarned.toLocaleString("vi-VN")} đ
                 </h4>
-                <p className="text-xs text-slate-400 mt-1">
-                  Số tiền <strong className="text-emerald-400 font-mono font-bold">{totalEarned.toLocaleString("vi-VN")} đ</strong> đã được cộng vào Ví Thu Nhập tức thì của bạn.
+                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  Thù lao ca làm đã được <strong className="text-emerald-400">Sell Time bảo chứng an toàn 100%</strong> và cộng tức thì vào số dư ví của bạn!
                 </p>
               </div>
 
               <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800 text-left text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Mã giao dịch Escrow:</span>
-                  <span className="font-mono font-bold text-slate-200">ESC-9976-PAY</span>
+                  <span className="text-slate-500">Mã bảo chứng Sell Time:</span>
+                  <span className="font-mono font-bold text-slate-200">#ST-{shift.id.slice(-6).toUpperCase()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Phương thức:</span>
-                  <span className="font-medium text-purple-400">VietQR NAPAS 247</span>
+                  <span className="text-slate-500">Kênh thanh toán:</span>
+                  <span className="font-medium text-purple-400">VietQR Napas 24/7 PayOS</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Thời gian xử lý:</span>
-                  <span className="font-mono font-medium text-emerald-400">0.8 giây (Tức thì)</span>
+                  <span className="text-slate-500">Thời gian nhận tiền:</span>
+                  <span className="font-mono font-medium text-emerald-400">Tức thì (0.8s)</span>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full py-2.5 rounded-md font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-white transition-colors border border-slate-700"
+                className="w-full py-2.5 rounded-md font-semibold text-xs bg-purple-600 hover:bg-purple-500 text-white transition-colors shadow-sm"
               >
-                Đóng & Xem Ví Cá Nhân
+                Tuyệt Vời! Xem Ví & Rút Tiền Ngay
               </button>
             </div>
           )}

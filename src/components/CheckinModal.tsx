@@ -155,10 +155,10 @@ export function CheckinModal({
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
-                Check-in Bắt Đầu Ca Làm
+                Điểm Danh Nhận Ca Tại Quán 📍
               </h3>
               <p className="text-xs text-slate-400">
-                Xác thực hiện diện tại cơ sở để kích hoạt Escrow
+                Xác thực bạn đã có mặt tại quán để bắt đầu tính công
               </p>
             </div>
           </div>
@@ -225,7 +225,7 @@ export function CheckinModal({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Navigation className="w-4 h-4 text-purple-400" />
-                    Bước 1: Kiểm tra vị trí (Geofencing 100m)
+                    Bước 1: Kiểm tra vị trí tại quán (bán kính 100m)
                   </span>
                   <span
                     className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${

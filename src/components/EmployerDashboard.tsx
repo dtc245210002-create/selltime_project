@@ -516,10 +516,10 @@ export function EmployerDashboard({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Sổ Cái Ký Quỹ Escrow
+                Sổ Quỹ Bảo Đảm Tiền Lương 🛡️
               </h3>
               <p className="text-[10px] text-slate-400">
-                Minh bạch dòng tiền bảo chứng thù lao ca làm việc
+                Sell Time giữ hộ tiền công an toàn cho nhân viên của quán
               </p>
             </div>
             <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
@@ -530,14 +530,14 @@ export function EmployerDashboard({
           {/* Quick Metrics KPI Bar */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-900/90 border border-amber-500/20 p-2.5 rounded-lg">
-              <span className="text-[10px] text-slate-400 block">Đang bảo lưu an toàn</span>
+              <span className="text-[10px] text-slate-400 block">Đang giữ hộ an toàn</span>
               <div className="flex items-baseline gap-1 mt-0.5">
                 <span className="text-sm font-bold font-mono text-amber-400">153.000 đ</span>
                 <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
               </div>
             </div>
             <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-lg">
-              <span className="text-[10px] text-slate-400 block">Tổng thù lao đã giải ngân</span>
+              <span className="text-[10px] text-slate-400 block">Đã thanh toán cho nhân viên</span>
               <div className="flex items-baseline gap-1 mt-0.5">
                 <span className="text-sm font-bold font-mono text-emerald-400">120.000 đ</span>
                 <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
@@ -549,9 +549,9 @@ export function EmployerDashboard({
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
             {[
               { key: "ALL", label: "Tất cả" },
-              { key: "HELD", label: "Tạm giữ (Held)" },
-              { key: "RELEASED", label: "Đã giải ngân" },
-              { key: "REFUNDED", label: "Hoàn trả" },
+              { key: "HELD", label: "Đang giữ hộ" },
+              { key: "RELEASED", label: "Đã thanh toán" },
+              { key: "REFUNDED", label: "Đã hoàn lại" },
             ].map((tab) => (
               <button
                 key={tab.key}

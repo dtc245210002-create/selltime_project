@@ -203,9 +203,13 @@ html.light [class*="border-emerald-800"],
 html.light [class*="border-emerald-700"] {
   border-color: #A7F3D0 !important;
 }
+html.light .text-emerald-500,
 html.light .text-emerald-400,
 html.light .text-emerald-300 {
   color: #047857 !important;
+}
+html.light .text-emerald-600 {
+  color: #065F46 !important;
 }
 
 /* Urgent SOS / Rose in Light Mode */
@@ -216,6 +220,7 @@ html.light [class*="border-rose-800"],
 html.light [class*="border-rose-700"] {
   border-color: #FECDD3 !important;
 }
+html.light .text-rose-500,
 html.light .text-rose-400,
 html.light .text-rose-300 {
   color: #E11D48 !important;
@@ -229,9 +234,13 @@ html.light [class*="border-amber-800"],
 html.light [class*="border-amber-700"] {
   border-color: #FDE68A !important;
 }
+html.light .text-amber-500,
 html.light .text-amber-400,
 html.light .text-amber-300 {
-  color: #D97706 !important;
+  color: #B45309 !important;
+}
+html.light .text-amber-600 {
+  color: #92400E !important;
 }
 
 /* Interactive & Hover states */

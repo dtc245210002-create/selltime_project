@@ -21,11 +21,12 @@ import {
   ArrowRight,
   HelpCircle,
 } from "lucide-react";
+import { UserRole } from "../domain/types";
 
 interface GuideModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultRole?: "CANDIDATE" | "EMPLOYER";
+  defaultRole?: UserRole;
 }
 
 export function GuideModal({ isOpen, onClose, defaultRole = "CANDIDATE" }: GuideModalProps) {

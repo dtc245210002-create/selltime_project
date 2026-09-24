@@ -7,7 +7,7 @@ export type UserRole = "CANDIDATE" | "EMPLOYER" | "ADMIN";
 
 export type WorkType = "PART_TIME" | "FULL_TIME" | "GIG";
 
-export type ShiftPeriod = "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT";
+export type ShiftPeriod = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING" | "NIGHT";
 
 export type ShiftStatus = "OPEN" | "FILLED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 

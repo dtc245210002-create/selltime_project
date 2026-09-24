@@ -8,6 +8,7 @@ import {
   Shield,
   QrCode,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { Shift } from "../domain/types";
 
@@ -18,6 +19,7 @@ interface MyShiftsTabProps {
   shiftStatuses: Record<string, ShiftAttendanceStatus>;
   onStartCheckin: (shift: Shift) => void;
   onStartCheckout: (shift: Shift) => void;
+  onCancelShift?: (shift: Shift) => void;
 }
 
 export function MyShiftsTab({
@@ -25,6 +27,7 @@ export function MyShiftsTab({
   shiftStatuses,
   onStartCheckin,
   onStartCheckout,
+  onCancelShift,
 }: MyShiftsTabProps) {
   const [filter, setFilter] = useState<"ALL" | ShiftAttendanceStatus>("ALL");
   const [timerSeconds, setTimerSeconds] = useState<number>(3672); // 1h 01m 12s
@@ -58,7 +61,7 @@ export function MyShiftsTab({
   });
 
   return (
-    <div className="p-4 space-y-3.5 max-w-2xl mx-auto">
+    <div className="space-y-3.5 w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -233,13 +236,23 @@ export function MyShiftsTab({
                   {/* Nút hành động */}
                   <div className="flex items-center gap-2">
                     {status === "APPLIED" && (
-                      <button
-                        onClick={() => onStartCheckin(shift)}
-                        className="text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        <span>Check-in GPS / QR</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => onCancelShift && onCancelShift(shift)}
+                          className="text-xs font-medium text-rose-400 hover:text-rose-300 bg-slate-950 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-800/60 px-2.5 py-1.5 rounded-md flex items-center gap-1 transition-colors"
+                          title="Hủy ca (Ân hạn 1h miễn phạt)"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Hủy ca</span>
+                        </button>
+                        <button
+                          onClick={() => onStartCheckin(shift)}
+                          className="text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          <span>Check-in GPS / QR</span>
+                        </button>
+                      </>
                     )}
 
                     {status === "IN_PROGRESS" && (

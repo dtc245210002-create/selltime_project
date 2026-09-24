@@ -85,7 +85,7 @@ export function EmployerProfileTab({
   };
 
   return (
-    <div className="p-4 space-y-3.5 max-w-2xl mx-auto">
+    <div className="space-y-4 w-full">
       {/* Thông báo cập nhật thành công */}
       {profileSaveSuccess && (
         <div className="bg-emerald-950/70 border border-emerald-800/80 rounded-lg p-2.5 flex items-center gap-2 text-xs text-emerald-300 animate-in fade-in">

@@ -111,16 +111,20 @@ export function AuthModal({
 
         {/* Header Modal */}
         <div className="text-center mb-4">
-          <div className="w-9 h-9 bg-purple-600 rounded-lg mx-auto flex items-center justify-center text-white font-bold text-sm tracking-tight mb-2 shadow-sm">
-            ST
+          <div className="w-12 h-12 bg-white rounded-xl mx-auto p-1 border border-slate-700 shadow-md mb-2 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="SellTime Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <h2 className="text-lg font-bold text-white tracking-tight">
-            {mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản Sell Time"}
+            {mode === "login" ? "Chào mừng trở lại SellTime" : "Tạo tài khoản SellTime"}
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             {mode === "login"
               ? "Đăng nhập để bán giờ rảnh hoặc tuyển dụng tức thì"
-              : "Bắt đầu kiếm tiền từ quỹ thời gian rảnh của bạn"}
+              : "Bạn có bao nhiêu thời gian để bán?"}
           </p>
         </div>
 

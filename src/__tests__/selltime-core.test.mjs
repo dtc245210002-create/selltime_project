@@ -17,7 +17,10 @@ function calculateHaversineDistance(coord1, coord2) {
   return Math.round(R * c * 10) / 10;
 }
 
-function calculateCancellationPenalty(hoursBeforeStart) {
+function calculateCancellationPenalty(hoursBeforeStart, minutesSinceBooking) {
+  if (typeof minutesSinceBooking === "number" && minutesSinceBooking >= 0 && minutesSinceBooking <= 60) {
+    return { penaltyPoints: 0, isLockedFromSos: false, isGracePeriod: true, reason: "Ân hạn 1 giờ: Miễn trừ phạt." };
+  }
   if (hoursBeforeStart >= 12) {
     return { penaltyPoints: 0, isLockedFromSos: false, reason: "Hủy trước > 12 giờ: Không trừ điểm uy tín." };
   }
@@ -81,7 +84,10 @@ assert(mismatchTimeScore === 65, "Lệch khung giờ (Time = 0) bị phạt nặ
 
 // 3. PartyMode Trust Battery
 console.log("\n🔋 [Phần 3/4] Kiểm thử Cơ chế Trừ & Thưởng Pin Uy Tín (PartyMode):");
-const p14 = calculateCancellationPenalty(14);
+const pGrace = calculateCancellationPenalty(1, 20); // Hủy sát giờ <2h nhưng mới nhận cách đây 20 phút
+assert(pGrace.penaltyPoints === 0 && !pGrace.isLockedFromSos && pGrace.isGracePeriod, "Ân hạn 1 giờ do ấn nhầm: Miễn trừ phạt và giữ nguyên 100% Pin");
+
+const p14 = calculateCancellationPenalty(14, 120);
 assert(p14.penaltyPoints === 0 && !p14.isLockedFromSos, "Hủy trước 14h: Không trừ điểm uy tín");
 
 const p5 = calculateCancellationPenalty(5);

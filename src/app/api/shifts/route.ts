@@ -1,23 +1,30 @@
 import { NextResponse } from "next/server";
+import { getShiftsFromSupabase, saveShiftToSupabase } from "@/infrastructure/database/supabaseRepo";
 import { getShiftsFromSql, saveShiftToSql } from "@/infrastructure/database/sqlserver";
 import { INITIAL_SHIFTS } from "@/application/store";
 import { Shift } from "@/domain/types";
 
-// In-memory cache cho runtime (đặc biệt khi chạy trên Vercel không có SQL Server local)
+// In-memory cache dự phòng cho runtime
 let memoryShifts: Shift[] = [...INITIAL_SHIFTS];
 
 export async function GET() {
   try {
-    // 1. Thử lấy từ SQL Server SellTimeDB
+    // 1. Thử lấy từ Supabase Cloud PostgreSQL
+    const supabaseShifts = await getShiftsFromSupabase();
+    if (supabaseShifts && supabaseShifts.length > 0) {
+      return NextResponse.json({ success: true, source: "supabase", data: supabaseShifts });
+    }
+
+    // 2. Thử lấy từ SQL Server SellTimeDB (nếu chạy local)
     const sqlShifts = await getShiftsFromSql();
     if (sqlShifts && sqlShifts.length > 0) {
       return NextResponse.json({ success: true, source: "sqlserver", data: sqlShifts });
     }
   } catch (err) {
-    console.warn("Lỗi truy vấn SQL Server, fallback sang Memory:", err);
+    console.warn("Lỗi truy vấn Database, fallback sang Memory:", err);
   }
 
-  // 2. Fallback sang In-Memory Store
+  // 3. Fallback sang In-Memory Store
   return NextResponse.json({ success: true, source: "memory", data: memoryShifts });
 }
 
@@ -36,11 +43,15 @@ export async function POST(req: Request) {
     // Luôn lưu vào memory cache
     memoryShifts = [newShift, ...memoryShifts];
 
+    // Thử lưu vào Supabase Cloud
+    const savedToSupabase = await saveShiftToSupabase(newShift);
+
     // Thử lưu vào SQL Server nếu có kết nối
     const savedToSql = await saveShiftToSql(newShift);
 
     return NextResponse.json({
       success: true,
+      savedToSupabase,
       savedToSql,
       data: newShift,
     });

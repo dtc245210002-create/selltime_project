@@ -107,16 +107,35 @@ export function EmployerDashboard({
 
   // Form states
   const [newTitle, setNewTitle] = useState("");
-  const [newWage, setNewWage] = useState(30000);
-  const [newHours, setNewHours] = useState(4);
-  const [newStart, setNewStart] = useState("18:00");
-  const [newEnd, setNewEnd] = useState("22:00");
-  const [newPeriod, setNewPeriod] = useState<ShiftPeriod>("EVENING");
+  const [newWage, setNewWage] = useState(32000);
+  const [newHours, setNewHours] = useState<number>(2.5);
+  const [newStart, setNewStart] = useState("11:00");
+  const [newEnd, setNewEnd] = useState("13:30");
+  const [newPeriod, setNewPeriod] = useState<ShiftPeriod>("LUNCH");
   const [isSos, setIsSos] = useState(false);
+  const [isSplitShift, setIsSplitShift] = useState(true);
+
+  // Auto calculate duration in hours from time strings
+  const updateTimes = (start: string, end: string) => {
+    setNewStart(start);
+    setNewEnd(end);
+    const [sH, sM] = start.split(":").map(Number);
+    const [eH, eM] = end.split(":").map(Number);
+    if (!isNaN(sH) && !isNaN(sM) && !isNaN(eH) && !isNaN(eM)) {
+      let startMin = sH * 60 + sM;
+      let endMin = eH * 60 + eM;
+      if (endMin <= startMin) endMin += 24 * 60; // overnight
+      const diff = Math.round(((endMin - startMin) / 60) * 10) / 10;
+      setNewHours(diff > 0 ? diff : 1);
+    }
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
+
+    const baseBudget = Math.round(newWage * newHours);
+    const bonus = isSos ? 30000 : 0;
 
     const created: Shift = {
       id: `shift_${Date.now()}`,
@@ -125,7 +144,9 @@ export function EmployerDashboard({
       employer_avatar:
         "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80",
       title: newTitle,
-      description: "Ca làm việc đăng từ chế độ Nhà tuyển dụng Sell Time",
+      description: isSplitShift
+        ? `⚡ Ca gãy linh hoạt ${newHours}h (${newStart} - ${newEnd}), nhận tiền liền sau ca qua Escrow.`
+        : `Ca làm việc tiêu chuẩn ${newHours}h (${newStart} - ${newEnd}) đăng từ chế độ Chủ quán.`,
       work_type: "PART_TIME",
       shift_date: "Hôm nay",
       shift_start: newStart,
@@ -133,12 +154,14 @@ export function EmployerDashboard({
       duration_hours: newHours,
       period: newPeriod,
       hourly_wage: newWage,
-      total_budget: newWage * newHours,
+      total_budget: baseBudget + bonus,
       required_candidates: 1,
       filled_candidates: 0,
       is_sos: isSos,
-      sos_bonus_amount: isSos ? 30000 : 0,
-      required_skills: ["Phục vụ bàn"],
+      sos_bonus_amount: bonus,
+      required_skills: ["Phục vụ bàn", "Nhanh nhẹn"],
+      store_perks: isSplitShift ? ["Bao ăn bữa ca", "Nhận tiền ngay sau ca"] : ["Phụ cấp gửi xe"],
+      friendly_tags: isSplitShift ? ["⚡ Ca gãy SV", "Lương ngay"] : ["Theo giờ"],
       location_coords: {
         latitude: 21.593,
         longitude: 105.834,
@@ -160,7 +183,7 @@ export function EmployerDashboard({
   };
 
   return (
-    <div className="p-4 space-y-3.5 max-w-3xl mx-auto">
+    <div className="space-y-4 w-full">
       {/* Employer Top Banner */}
       <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 shadow-flat">
         <div className="flex items-center justify-between mb-3">
@@ -647,150 +670,182 @@ export function EmployerDashboard({
               <X className="w-4 h-4" />
             </button>
 
-            <h3 className="text-sm font-bold text-white">
-              Đăng Ca Làm Việc Mới
-            </h3>
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                <PlusCircle className="w-4 h-4 text-purple-400" />
+                <span>Đăng Ca Làm Việc Mới</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Tự do tùy chỉnh ca gãy linh hoạt hoặc ca tiêu chuẩn cho sinh viên
+              </p>
+            </div>
 
-            {/* Mẫu ca */}
+            {/* Mẫu ca nhanh */}
             <div className="space-y-1.5">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
-                Mẫu ca nhanh:
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                Mẫu ca nhanh phổ biến:
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
-                    setNewTitle("Phục vụ bàn ca tối The Cuppa (18h-22h)");
-                    setNewWage(32000);
-                    setNewHours(4);
-                    setNewStart("18:00");
-                    setNewEnd("22:00");
+                    setNewTitle("🍜 Phục vụ ca gãy trưa cao điểm");
+                    setNewWage(35000);
+                    updateTimes("11:00", "13:30");
+                    setNewPeriod("LUNCH");
+                    setIsSos(false);
+                    setIsSplitShift(true);
+                  }}
+                  className="text-left text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 p-2 rounded-lg border border-slate-800 hover:border-purple-500/50 transition-colors"
+                >
+                  <span className="font-semibold text-white block">⚡ Ca gãy trưa (2.5h)</span>
+                  <span className="text-[10px] text-slate-400">11:00 - 13:30 • 35k/h</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle("🌙 Phụ bếp / Phục vụ ca gãy tối");
+                    setNewWage(33000);
+                    updateTimes("17:30", "20:30");
                     setNewPeriod("EVENING");
                     setIsSos(false);
+                    setIsSplitShift(true);
                   }}
-                  className="text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
+                  className="text-left text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 p-2 rounded-lg border border-slate-800 hover:border-purple-500/50 transition-colors"
                 >
-                  Phục vụ tối (4h - 32k)
+                  <span className="font-semibold text-white block">⚡ Ca gãy tối (3h)</span>
+                  <span className="text-[10px] text-slate-400">17:30 - 20:30 • 33k/h</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => {
-                    setNewTitle("Pha chế đồ uống ca sáng (7h-11h)");
-                    setNewWage(30000);
-                    setNewHours(4);
-                    setNewStart("07:00");
-                    setNewEnd("11:00");
-                    setNewPeriod("MORNING");
+                    setNewTitle("☕ Phục vụ bàn ca tối tiêu chuẩn");
+                    setNewWage(32000);
+                    updateTimes("18:00", "22:00");
+                    setNewPeriod("EVENING");
                     setIsSos(false);
+                    setIsSplitShift(false);
                   }}
-                  className="text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
+                  className="text-left text-[11px] bg-slate-950 hover:bg-slate-850 text-slate-300 p-2 rounded-lg border border-slate-800 hover:border-purple-500/50 transition-colors"
                 >
-                  Pha chế sáng (4h - 30k)
+                  <span className="font-semibold text-white block">☕ Phục vụ tối (4h)</span>
+                  <span className="text-[10px] text-slate-400">18:00 - 22:00 • 32k/h</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => {
-                    setNewTitle("🚨 GẤP: Bù nhân viên ốm ca tối");
+                    setNewTitle("🚨 GẤP: Cần 1 bạn cứu ca tối");
                     setNewWage(35000);
-                    setNewHours(4);
-                    setNewStart("18:00");
-                    setNewEnd("22:00");
+                    updateTimes("18:00", "22:00");
                     setNewPeriod("EVENING");
                     setIsSos(true);
+                    setIsSplitShift(false);
                   }}
-                  className="text-[11px] bg-rose-950/70 text-rose-300 border border-rose-800/80 px-2 py-0.5 rounded-md"
+                  className="text-left text-[11px] bg-rose-950/40 hover:bg-rose-950/70 text-rose-300 p-2 rounded-lg border border-rose-800/80 transition-colors"
                 >
-                  Tuyển SOS (+30k)
+                  <span className="font-semibold text-rose-200 block">🚨 Tuyển SOS (+30k)</span>
+                  <span className="text-[10px] text-rose-400/90">Thưởng nóng ứng viên</span>
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-3">
+            <form onSubmit={handleCreate} className="space-y-3 pt-1">
               <div>
                 <label className="text-xs font-medium text-slate-300 block mb-1">
                   Tiêu đề ca làm việc:
                 </label>
                 <input
                   type="text"
-                  placeholder="VD: Phục vụ khách ca tối The Cuppa"
+                  placeholder="VD: Phục vụ khách ca gãy trưa 11h-13h30"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 focus:border-purple-500 focus:outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 focus:border-purple-500 focus:outline-none placeholder-slate-600"
                   required
                 />
               </div>
 
+              {/* Khung giờ tự nhập */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-medium text-slate-300 block mb-1">
-                    Khung ca:
+                    Giờ bắt đầu:
                   </label>
-                  <select
-                    value={newPeriod}
-                    onChange={(e) => {
-                      const p = e.target.value as ShiftPeriod;
-                      setNewPeriod(p);
-                      if (p === "MORNING") { setNewStart("07:00"); setNewEnd("11:00"); }
-                      else if (p === "AFTERNOON") { setNewStart("13:00"); setNewEnd("17:00"); }
-                      else if (p === "EVENING") { setNewStart("18:00"); setNewEnd("22:00"); }
-                      else if (p === "NIGHT") { setNewStart("22:00"); setNewEnd("02:00"); }
-                    }}
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="MORNING" className="bg-slate-900">Sáng (07h-11h)</option>
-                    <option value="AFTERNOON" className="bg-slate-900">Chiều (13h-17h)</option>
-                    <option value="EVENING" className="bg-slate-900">Tối (18h-22h)</option>
-                    <option value="NIGHT" className="bg-slate-900">Đêm (22h-02h)</option>
-                  </select>
+                  <input
+                    type="time"
+                    value={newStart}
+                    onChange={(e) => updateTimes(e.target.value, newEnd)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono focus:border-purple-500 focus:outline-none"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-300 block mb-1">
-                    Bắt đầu - kết thúc:
+                    Giờ kết thúc:
                   </label>
-                  <div className="flex items-center gap-1 font-mono text-xs">
-                    <input
-                      type="text"
-                      value={newStart}
-                      onChange={(e) => setNewStart(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-md p-2 text-center"
-                    />
-                    <span className="text-slate-500">-</span>
-                    <input
-                      type="text"
-                      value={newEnd}
-                      onChange={(e) => setNewEnd(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-md p-2 text-center"
-                    />
-                  </div>
+                  <input
+                    type="time"
+                    value={newEnd}
+                    onChange={(e) => updateTimes(newStart, e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono focus:border-purple-500 focus:outline-none"
+                    required
+                  />
                 </div>
               </div>
 
+              {/* Lương & Thời lượng */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-medium text-slate-300 block mb-1">
-                    Lương (đ/h):
+                    Lương theo giờ (đ/h):
                   </label>
                   <input
                     type="number"
                     step="1000"
+                    min="20000"
                     value={newWage}
-                    onChange={(e) => setNewWage(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono"
+                    onChange={(e) => setNewWage(parseInt(e.target.value, 10) || 0)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono focus:border-purple-500 focus:outline-none"
+                    required
                   />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-300 block mb-1">
-                    Thời lượng (h):
+                    Thời lượng tính (giờ):
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={newHours}
-                    onChange={(e) => setNewHours(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md p-2 font-mono"
-                  />
+                  <div className="bg-slate-950 border border-slate-800 text-xs text-emerald-400 font-bold font-mono rounded-md p-2 flex items-center justify-between">
+                    <span>{newHours} tiếng</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Tự động tính</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Phân loại ca */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSplitShift(true)}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                    isSplitShift
+                      ? "bg-purple-600/20 border-purple-500 text-purple-300 font-semibold"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  ⚡ Ca gãy linh hoạt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSplitShift(false)}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                    !isSplitShift
+                      ? "bg-slate-800 border-slate-600 text-white font-semibold"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  ⏱️ Ca tiêu chuẩn
+                </button>
               </div>
 
               {/* SOS checkbox */}
@@ -800,7 +855,7 @@ export function EmployerDashboard({
                     Đánh dấu ca SOS khẩn cấp?
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    Thưởng thêm +30.000đ hút ứng viên
+                    Thưởng thêm +30.000đ hút ứng viên nhận liền
                   </span>
                 </div>
                 <input
@@ -811,19 +866,41 @@ export function EmployerDashboard({
                 />
               </div>
 
+              {/* Live Escrow Calculation Summary */}
+              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Tiền công ({newWage.toLocaleString("vi-VN")}đ × {newHours}h):</span>
+                  <span className="font-mono text-slate-200">
+                    {Math.round(newWage * newHours).toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+                {isSos && (
+                  <div className="flex items-center justify-between text-[11px] text-rose-400">
+                    <span>Thưởng nóng SOS:</span>
+                    <span className="font-mono">+30.000 đ</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800 font-bold">
+                  <span className="text-emerald-400">Tổng tiền ứng viên nhận (Escrow):</span>
+                  <span className="font-mono text-emerald-400 text-sm">
+                    {(Math.round(newWage * newHours) + (isSos ? 30000 : 0)).toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPostModal(false)}
-                  className="flex-1 py-2 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs rounded-md"
+                  className="flex-1 py-2 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs rounded-md font-medium"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-md shadow-sm"
+                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
                 >
-                  Đăng ca
+                  Đăng ca ngay 🚀
                 </button>
               </div>
             </form>

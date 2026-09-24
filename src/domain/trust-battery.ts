@@ -8,6 +8,7 @@ export interface PenaltyResult {
   isLockedFromSos: boolean;
   lockHours: number;
   reason: string;
+  isGracePeriod?: boolean;
 }
 
 export interface RewardResult {
@@ -18,8 +19,23 @@ export interface RewardResult {
 /**
  * Tính toán mức phạt Trust Battery khi ứng viên hủy ca làm việc
  * @param hoursBeforeStart Số giờ tính từ lúc hủy đến lúc bắt đầu ca
+ * @param minutesSinceBooking Số phút kể từ lúc bấm nhận ca (Dùng cho chính sách ân hạn ấn nhầm trong 1h)
  */
-export function calculateCancellationPenalty(hoursBeforeStart: number): PenaltyResult {
+export function calculateCancellationPenalty(
+  hoursBeforeStart: number,
+  minutesSinceBooking?: number
+): PenaltyResult {
+  // Chính sách ân hạn: Nếu có truyền thời gian đặt và hủy trong vòng 60 phút (1 giờ) kể từ khi bấm nhận ca -> Miễn phạt hoàn toàn
+  if (typeof minutesSinceBooking === "number" && minutesSinceBooking >= 0 && minutesSinceBooking <= 60) {
+    return {
+      penaltyPoints: 0,
+      isLockedFromSos: false,
+      lockHours: 0,
+      isGracePeriod: true,
+      reason: "Ân hạn 1 giờ khi ấn nhầm: Miễn trừ phạt và không trừ Pin Uy Tín.",
+    };
+  }
+
   if (hoursBeforeStart >= 12) {
     return {
       penaltyPoints: 0,

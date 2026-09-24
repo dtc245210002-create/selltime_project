@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Compass,
   CalendarCheck2,
@@ -9,13 +9,13 @@ import {
   BatteryCharging,
   Wifi,
   Smartphone,
-  Monitor,
   Download,
   X,
   LogIn,
   LogOut,
   Sun,
   Moon,
+  BookOpen,
 } from "lucide-react";
 import { User as UserType } from "../domain/types";
 import { useViewMode } from "./ViewModeContext";
@@ -28,6 +28,7 @@ interface MobileShellProps {
   currentUser: UserType | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onOpenGuide?: () => void;
 }
 
 export function MobileShell({
@@ -38,18 +39,10 @@ export function MobileShell({
   currentUser,
   onOpenAuth,
   onLogout,
+  onOpenGuide,
 }: MobileShellProps) {
-  const [currentTime] = useState("19:42");
-  const { viewMode, setViewMode, theme, toggleTheme } = useViewMode();
+  const { theme, toggleTheme } = useViewMode();
   const [showInstallModal, setShowInstallModal] = useState(false);
-  const phoneScrollRef = useRef<HTMLDivElement>(null);
-
-  // Reset phone container scroll cleanly when changing tabs
-  useEffect(() => {
-    if (phoneScrollRef.current) {
-      phoneScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
-    }
-  }, [activeTab]);
 
   const tabs = [
     { id: "explore", label: "Khám phá", icon: Compass },
@@ -59,35 +52,79 @@ export function MobileShell({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-900 selection:text-purple-200">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-900 selection:text-purple-200 pb-16 md:pb-0">
       {/* ========================================================= */}
-      {/* TOP HEADER: Clean Bar with Theme & Mode Controls          */}
+      {/* TOP HEADER: Clean Responsive Navbar                       */}
       {/* ========================================================= */}
-      <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 shrink-0 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          {/* Logo & Brand Info */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center font-bold text-white text-sm tracking-tight shadow-sm">
-              ST
+      <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-5 lg:px-8 py-2.5 shrink-0 sticky top-0 z-50">
+        <div className="max-w-[1720px] w-full mx-auto flex items-center justify-between gap-3">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-0.5 border border-slate-700 shadow-md flex items-center justify-center shrink-0 hover:scale-105 transition-transform">
+              <img
+                src="/logo.png"
+                alt="SellTime Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-sm text-white tracking-tight">
-                  Sell Time
+                <h1 className="font-extrabold text-base tracking-tight flex items-center">
+                  <span className="text-teal-400">Sell</span>
+                  <span className="text-rose-400">Time</span>
                 </h1>
-                <span className="text-[10px] font-medium text-purple-400 bg-purple-950/80 border border-purple-800/60 px-1.5 py-0.2 rounded-md">
+                <span className="text-[10px] font-semibold text-teal-300 bg-teal-950/80 border border-teal-800/60 px-1.5 py-0.2 rounded-md">
                   Time-First
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
-                Thị trường kết nối việc làm theo giờ linh hoạt
+              <p className="text-[11px] text-slate-400 hidden sm:block font-medium">
+                Bạn có bao nhiêu thời gian để bán?
               </p>
             </div>
           </div>
 
-          {/* Controls: Theme toggle, View mode switcher, PWA & Auth */}
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl shadow-xs">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    isActive
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-850"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Controls: Guide, Theme, Trust Battery, PWA & Auth */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Theme Toggle Button (Light / Dark) */}
+            {/* Nút Hướng Dẫn & Cẩm Nang Kỹ Năng */}
+            {onOpenGuide && (
+              <button
+                onClick={onOpenGuide}
+                className="flex items-center gap-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-800/60 text-purple-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs"
+                title="Xem hướng dẫn sử dụng và cẩm nang kỹ năng F&B"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden sm:inline">Hướng Dẫn & Kỹ Năng</span>
+              </button>
+            )}
+
+            {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center shadow-sm"
@@ -100,38 +137,16 @@ export function MobileShell({
               )}
             </button>
 
-            {/* View Mode Switcher (Web / Mobile) */}
-            <div className="bg-slate-950 p-1 rounded-lg flex items-center border border-slate-800">
-              <button
-                onClick={() => setViewMode("desktop")}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "desktop"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Xem trước chế độ Web màn hình rộng"
-              >
-                <Monitor className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Xem trước Web</span>
-              </button>
-              <button
-                onClick={() => setViewMode("mobile")}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === "mobile"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Xem trước chế độ ứng dụng di động"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Xem trước Mobile</span>
-              </button>
+            {/* Pin Uy Tín */}
+            <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-medium">
+              <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono font-bold text-[11px]">{trustBattery}%</span>
             </div>
 
             {/* PWA Button */}
             <button
               onClick={() => setShowInstallModal(true)}
-              className="hidden sm:flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors"
+              className="hidden sm:flex items-center gap-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors"
             >
               <Download className="w-3.5 h-3.5 text-slate-400" />
               <span>Cài App</span>
@@ -151,7 +166,7 @@ export function MobileShell({
                       {currentUser.full_name}
                     </span>
                     <span className="text-[10px] text-slate-400 font-medium">
-                      {currentUser.role === "CANDIDATE" ? "Sinh viên" : "Chủ quán"}
+                      {currentUser.role === "CANDIDATE" ? "Sinh viên TNUT" : "Chủ quán"}
                     </span>
                   </div>
                 </div>
@@ -178,130 +193,47 @@ export function MobileShell({
       </header>
 
       {/* ========================================================= */}
-      {/* 1. DESKTOP MODE                                           */}
+      {/* MAIN CONTENT CONTAINER (FULL RESPONSIVE WEB APP)         */}
       {/* ========================================================= */}
-      {viewMode === "desktop" ? (
-        <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col">
-          {/* Navigation Bar */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-flat">
-            <nav className="flex items-center gap-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      isActive
-                        ? "bg-purple-950/70 text-purple-300 border border-purple-800/70"
-                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* Trust Badge & Location */}
-            <div className="flex items-center gap-3 pr-2">
-              <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 text-emerald-400 px-3 py-1 rounded-lg text-xs font-medium">
-                <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Pin uy tín: {trustBattery}%</span>
-              </div>
-              <span className="text-xs text-slate-500 hidden md:inline">
-                TP. Thái Nguyên • ĐH TNUT
-              </span>
-            </div>
-          </div>
-
-          {/* Desktop Content Surface */}
-          <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-card">
-            {children}
-          </div>
+      <main className="flex-1 max-w-[1720px] w-full mx-auto p-2 sm:p-3 md:p-4 flex flex-col">
+        <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-card">
+          {children}
         </div>
-      ) : (
-        /* ========================================================= */
-        /* 2. MOBILE PREVIEW SMARTPHONE FRAME (420px)                */
-        /* ========================================================= */
-        <div className="flex-1 flex justify-center items-center py-6 bg-slate-950">
-          <div className="w-full sm:max-w-[420px] h-[820px] bg-slate-950 sm:rounded-2xl sm:border border-slate-800 sm:shadow-modal flex flex-col overflow-hidden relative">
-            {/* Status Bar */}
-            <div className="bg-slate-900/90 backdrop-blur-md px-4 py-2 flex justify-between items-center text-xs font-medium text-slate-400 border-b border-slate-800 shrink-0 z-30">
-              <span className="font-mono">{currentTime}</span>
+      </main>
 
-              <div className="flex items-center gap-2">
-                {currentUser ? (
-                  <button
-                    onClick={onLogout}
-                    className="flex items-center gap-1 text-slate-300 text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-800 hover:text-rose-400"
-                    title="Đăng xuất"
-                  >
-                    <span>{currentUser.full_name.split(" ").slice(-1)[0]}</span>
-                    <LogOut className="w-2.5 h-2.5 text-slate-400" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={onOpenAuth}
-                    className="bg-purple-600 text-white text-[10px] font-medium px-2.5 py-0.5 rounded-md"
-                  >
-                    Đăng nhập
-                  </button>
+      {/* ========================================================= */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (ONLY ON MOBILE SCREENS)     */}
+      {/* ========================================================= */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex justify-around items-center z-50">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`relative flex flex-col items-center py-1 px-3 rounded-md transition-colors ${
+                isActive
+                  ? "text-purple-400 font-medium"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <div className="relative">
+                <Icon className="w-5 h-5" />
+                {tab.badge && (
+                  <span className="absolute -top-1 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                    {tab.badge}
+                  </span>
                 )}
-
-                <div className="flex items-center gap-1 text-emerald-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                  <BatteryCharging className="w-3 h-3" />
-                  <span className="text-[10px] font-mono">{trustBattery}%</span>
-                </div>
               </div>
-            </div>
-
-            {/* Scrollable Content inside phone */}
-            <div ref={phoneScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden pb-16 scrollbar-none bg-slate-950">
-              {children}
-            </div>
-
-            {/* Bottom 4-Tabs Bar */}
-            <div className="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex justify-around items-center z-40">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id)}
-                    className={`relative flex flex-col items-center py-1 px-3 rounded-md transition-colors ${
-                      isActive
-                        ? "text-purple-400 font-medium"
-                        : "text-slate-500 hover:text-slate-300"
-                    }`}
-                  >
-                    <div className="relative">
-                      <Icon className="w-5 h-5" />
-                      {tab.badge && (
-                        <span className="absolute -top-1 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
-                          {tab.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] mt-0.5">{tab.label}</span>
-                    {isActive && (
-                      <span className="w-1 h-1 bg-purple-500 rounded-full mt-0.5" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+              <span className="text-[11px] mt-0.5">{tab.label}</span>
+              {isActive && (
+                <span className="w-1 h-1 bg-purple-500 rounded-full mt-0.5" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* ========================================================= */}
       {/* PWA INSTALL MODAL                                         */}

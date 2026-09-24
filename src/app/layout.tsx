@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sell Time - Nền Tảng Kết Nối Thời Gian Rảnh & Kỹ Năng Lao Động Thông Minh",
-  description: "Bắt đầu bằng quỹ giờ rảnh của bạn: 'How much time do you want to sell?'",
+  title: "SellTime - Bạn có bao nhiêu thời gian để bán?",
+  description: "Thị trường việc làm theo giờ linh hoạt cho sinh viên & chủ quán F&B tại Thái Nguyên",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

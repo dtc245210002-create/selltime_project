@@ -69,7 +69,7 @@ export function EmployerExploreTab() {
   };
 
   return (
-    <div className="p-4 space-y-3.5 max-w-2xl mx-auto">
+    <div className="space-y-4 w-full p-2 sm:p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

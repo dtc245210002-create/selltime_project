@@ -228,11 +228,18 @@ export function MessagesTab({
             localStorage.removeItem(sharedKey);
           } catch (_) {}
         })
-        .subscribe((status) => {
+        .subscribe((status, err) => {
           if (status === "SUBSCRIBED") {
             setIsConnected(true);
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            setIsConnected(false);
+            // Tự động thử kết nối lại nếu mạng chập chờn
+            setTimeout(() => {
+              try {
+                channel.subscribe((reStatus) => {
+                  if (reStatus === "SUBSCRIBED") setIsConnected(true);
+                });
+              } catch (_) {}
+            }, 1500);
           }
         });
 
@@ -286,7 +293,7 @@ export function MessagesTab({
       window.removeEventListener("selltime_chat_broadcast", handleLocalBroadcast);
       window.removeEventListener("storage", handleStorageEvent);
     };
-  }, [activeConvId, activeConv.defaultLastMessage, activeConv.defaultTime, activeConv.partnerAvatar, activeConv.partnerName, isEmployer]);
+  }, [activeConvId]);
 
   // Tự động scroll khi tin nhắn mới đến
   useEffect(() => {

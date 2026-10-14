@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { EmployerProfile, User as UserType } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
+import { getActiveVenuePin, setActiveVenuePin } from "../domain/trust-battery";
 
 interface EmployerProfileTabProps {
   user: UserType;
@@ -28,7 +29,7 @@ export function EmployerProfileTab({
 }: EmployerProfileTabProps) {
   const [showQrModal, setShowQrModal] = useState(false);
   const [escrowBalance, setEscrowBalance] = useState(1250000);
-  const [venuePin, setVenuePin] = useState("8866");
+  const [venuePin, setVenuePin] = useState(() => getActiveVenuePin());
   const [isCopiedPin, setIsCopiedPin] = useState(false);
 
   // State chỉnh sửa thông tin quán
@@ -77,7 +78,9 @@ export function EmployerProfileTab({
   const handleSavePin = (e: React.FormEvent) => {
     e.preventDefault();
     if (tempPin.trim().length === 4) {
-      setVenuePin(tempPin.trim());
+      const newPin = tempPin.trim();
+      setActiveVenuePin(newPin);
+      setVenuePin(newPin);
       setIsEditingPin(false);
       setPinSaveSuccess(true);
       setTimeout(() => setPinSaveSuccess(false), 3000);

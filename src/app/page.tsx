@@ -12,7 +12,6 @@ import { EmployerDashboard } from "../components/EmployerDashboard";
 import { EmployerExploreTab } from "../components/EmployerExploreTab";
 import { EmployerProfileTab } from "../components/EmployerProfileTab";
 import { AuthModal } from "../components/AuthModal";
-import { AiCoachModal } from "../components/AiCoachModal";
 import { CheckinModal } from "../components/CheckinModal";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { CancelShiftModal } from "../components/CancelShiftModal";
@@ -37,18 +36,13 @@ import { Sparkles, Info, Bot } from "lucide-react";
 import { ViewModeProvider, useViewMode } from "../components/ViewModeContext";
 
 export default function Home() {
-  return (
-    <ViewModeProvider>
-      <HomeContent />
-    </ViewModeProvider>
-  );
+  return <HomeContent />;
 }
 
 function HomeContent() {
   // Quản lý phiên đăng nhập: Mặc định đăng nhập sẵn Nguyễn Đức Huy (Sinh viên TNUT)
   const [currentUser, setCurrentUser] = useState<UserType | null>(MOCK_CANDIDATE_USER);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Quản lý hồ sơ ứng viên (Immutable State)
@@ -69,6 +63,11 @@ function HomeContent() {
   });
   const [checkinTimestamps, setCheckinTimestamps] = useState<Record<string, number>>({});
   const [walletBalance, setWalletBalance] = useState<number>(350000);
+  const [escrowPayoutToast, setEscrowPayoutToast] = useState<{
+    open: boolean;
+    amount: number;
+    shiftTitle: string;
+  } | null>(null);
 
   // State khóa ca SOS do án phạt hủy ca
   const [sosLockUntil, setSosLockUntil] = useState<number | null>(null);
@@ -104,6 +103,10 @@ function HomeContent() {
       if (savedStatuses) setShiftStatuses(JSON.parse(savedStatuses));
       if (savedTimestamps) setCheckinTimestamps(JSON.parse(savedTimestamps));
       if (savedApplied) setAppliedShiftIds(JSON.parse(savedApplied));
+      const savedWallet = localStorage.getItem("selltime_wallet_balance");
+      if (savedWallet && !isNaN(Number(savedWallet))) {
+        setWalletBalance(Number(savedWallet));
+      }
       if (savedLock) {
         const parsedLock = JSON.parse(savedLock);
         if (parsedLock.until && Date.now() < parsedLock.until) {
@@ -116,6 +119,45 @@ function HomeContent() {
     } catch (e) {
       console.warn("Không thể khôi phục phiên demo từ localStorage:", e);
     }
+
+    // Kiểm tra nếu có session thật từ Supabase Auth
+    async function checkRealSession() {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "same-origin" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.identity) {
+            setCurrentUser({
+              id: data.identity.userId,
+              email: data.identity.email,
+              phone: "0988888888",
+              full_name: data.identity.fullName || "Ứng Viên",
+              role: data.identity.role as UserRole,
+              avatar_url: data.identity.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+              is_kyc_verified: true,
+              created_at: new Date().toISOString(),
+            });
+            // Nạp thêm các ca làm việc thật từ Supabase Cloud
+            try {
+              const shiftsRes = await fetch("/api/shifts", { cache: "no-store", credentials: "same-origin" });
+              if (shiftsRes.ok) {
+                const shiftsJson = await shiftsRes.json();
+                if (shiftsJson?.data && Array.isArray(shiftsJson.data) && shiftsJson.data.length > 0) {
+                  setShifts((prev) => {
+                    const existingIds = new Set(prev.map((s) => s.id));
+                    const cloudShifts = (shiftsJson.data as Shift[]).filter((s) => !existingIds.has(s.id));
+                    return [...cloudShifts, ...prev];
+                  });
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {
+        // Fallback demo persona
+      }
+    }
+    void checkRealSession();
   }, []);
 
   // Đồng bộ trạng thái vào localStorage khi có thay đổi
@@ -159,6 +201,12 @@ function HomeContent() {
   // Đăng xuất
   const handleLogout = () => {
     setCurrentUser(null);
+    void fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      credentials: "same-origin",
+    }).catch(() => {});
   };
 
   // Tính toán Matching Engine đa biến thời gian thực dựa trên candidateProfile state
@@ -231,9 +279,22 @@ function HomeContent() {
     setCancelTargetShift(null);
   };
 
-  // DEMO posting stays local; mock identities must not write to a live database.
-  const handlePostNewShift = (newShift: Shift) => {
+  // Đăng ca mới: cập nhật ngay vào giao diện, nếu có tài khoản thật thì đồng bộ lên Cloud
+  const handlePostNewShift = async (newShift: Shift) => {
     setShifts((prev) => [newShift, ...prev]);
+    if (currentUser && currentUser.role === "EMPLOYER" && !currentUser.id.startsWith("demo_") && !currentUser.id.startsWith("user_emp_lan")) {
+      try {
+        await fetch("/api/shifts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shift: newShift }),
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+      } catch (err) {
+        console.warn("Không thể đồng bộ ca làm lên Supabase Cloud:", err);
+      }
+    }
   };
 
   // Xử lý Check-in thành công
@@ -249,7 +310,7 @@ function HomeContent() {
     }));
   };
 
-  // Xử lý Checkout và giải ngân Escrow thành công (cập nhật state an toàn)
+  // Xử lý Checkout và tự động giải ngân Escrow thành công
   const handleConfirmCheckout = (shift: Shift, earnedAmount: number, rating: number = 5) => {
     // Chống cộng thưởng nhiều lần khi bấm lặp
     if (shiftStatuses[shift.id] === "COMPLETED") return;
@@ -260,11 +321,33 @@ function HomeContent() {
       ...prev,
       [shift.id]: "COMPLETED",
     }));
-    setWalletBalance((prev) => prev + earnedAmount);
+
+    setWalletBalance((prev) => {
+      const newBal = prev + earnedAmount;
+      try {
+        localStorage.setItem("selltime_wallet_balance", newBal.toString());
+      } catch (_) {}
+      return newBal;
+    });
+
+    try {
+      localStorage.setItem("selltime_escrow_sos_released", "true");
+      window.dispatchEvent(new Event("selltime_escrow_released"));
+    } catch (_) {}
+
     setCandidateProfile((prev) => ({
       ...prev,
       trust_battery: Math.min(100, Math.max(0, prev.trust_battery + reward.rewardPoints)),
     }));
+
+    setEscrowPayoutToast({
+      open: true,
+      amount: earnedAmount,
+      shiftTitle: shift.title,
+    });
+    setTimeout(() => {
+      setEscrowPayoutToast(null);
+    }, 6000);
   };
 
   // Cập nhật kỹ năng từ AI Coach vào candidateProfile state
@@ -428,29 +511,16 @@ function HomeContent() {
 
                 {/* CỘT PHẢI: Feed Danh Sách Ca Làm Khớp Nối Đa Biến */}
                 <div id="shifts-feed-section" className="flex-1 space-y-3.5 min-w-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                      <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
                         Việc Làm Phù Hợp ({rankedShifts.length})
                       </h3>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (!currentUser) {
-                            setIsAuthModalOpen(true);
-                          } else {
-                            setIsAiCoachOpen(true);
-                          }
-                        }}
-                        className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors shadow-xs"
-                      >
-                        <Bot className="w-3.5 h-3.5 text-purple-400" />
-                        <span>Trợ lý Phỏng Vấn & CV</span>
-                      </button>
-                      <span className="text-xs text-slate-500 hidden sm:inline">
-                        Sắp xếp theo Matching Score
+                      <span className="text-xs sm:text-sm text-slate-400 font-semibold">
+                        Sắp xếp theo Matching Score AHP
                       </span>
                     </div>
                   </div>
@@ -528,7 +598,12 @@ function HomeContent() {
                     user={currentUser}
                     profile={candidateProfile}
                     walletBalance={walletBalance}
-                    onWithdrawFunds={(amt) => setWalletBalance(0)}
+                    onWithdrawFunds={(amt) => {
+                      setWalletBalance(0);
+                      try {
+                        localStorage.setItem("selltime_wallet_balance", "0");
+                      } catch (_) {}
+                    }}
                     onUpdateProfile={handleUpdateCandidateProfile}
                     onUpdateUser={handleUpdateCandidateUser}
                   />
@@ -558,13 +633,6 @@ function HomeContent() {
         onLoginSuccess={handleLoginSuccess}
       />
 
-      {/* MODAL TRỢ LÝ AI: PHỎNG VẤN STAR & TỐI ƯU CV */}
-      <AiCoachModal
-        isOpen={isAiCoachOpen}
-        onClose={() => setIsAiCoachOpen(false)}
-        candidateSkills={candidateProfile.skills}
-        onUpdateSkills={handleUpdateCandidateSkills}
-      />
 
       {/* MODAL CHECK-IN GPS GEOFENCING & QR CODE KÈM PIN FALLBACK */}
       <CheckinModal
@@ -599,6 +667,43 @@ function HomeContent() {
         onClose={() => setIsGuideOpen(false)}
         defaultRole={currentRole}
       />
+
+      {/* TOAST THÔNG BÁO GIẢI NGÂN ESCROW TỰ ĐỘNG */}
+      {escrowPayoutToast && escrowPayoutToast.open && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 border border-emerald-500/50 rounded-xl p-4 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Escrow Tự Động Giải Ngân
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEscrowPayoutToast(null)}
+                  className="text-slate-400 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+              <h4 className="text-xs font-bold text-white mt-1">
+                +{escrowPayoutToast.amount.toLocaleString("vi-VN")} đ đã vào ví
+              </h4>
+              <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-1">
+                Ca: {escrowPayoutToast.shiftTitle}
+              </p>
+              <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">Số dư ví mới:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {walletBalance.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

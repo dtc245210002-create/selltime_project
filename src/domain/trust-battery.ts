@@ -97,17 +97,45 @@ export function canAcceptSosShift(trustBattery: number): boolean {
 }
 
 /**
- * Mã PIN điểm danh mẫu tại cơ sở (The Cuppa Coffee)
+ * Mã PIN điểm danh mặc định tại cơ sở (The Cuppa Coffee)
  */
 export const VENUE_PIN = "8866";
 
 /**
- * Xác thực mã PIN điểm danh tại cơ sở
- * Chỉ chấp nhận đúng VENUE_PIN ("8866" sau khi trim), từ chối mọi giá trị khác hoặc rỗng
+ * Lấy mã PIN điểm danh hiện hành (hỗ trợ cập nhật động từ EmployerProfileTab)
  */
-export function verifyCheckinPin(inputPin: string, expectedPin: string = VENUE_PIN): boolean {
+let inMemoryVenuePin: string = VENUE_PIN;
+
+export function getActiveVenuePin(): string {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("selltime_venue_pin");
+      if (saved && saved.trim().length === 4) return saved.trim();
+    } catch (e) {}
+  }
+  return inMemoryVenuePin || VENUE_PIN;
+}
+
+/**
+ * Cập nhật mã PIN quầy thời gian thực
+ */
+export function setActiveVenuePin(pin: string): void {
+  inMemoryVenuePin = pin.trim();
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("selltime_venue_pin", pin.trim());
+      window.dispatchEvent(new Event("selltime_venue_pin_changed"));
+    } catch (e) {}
+  }
+}
+
+/**
+ * Xác thực mã PIN điểm danh tại cơ sở đối soát với PIN thời gian thực của Quán
+ */
+export function verifyCheckinPin(inputPin: string, expectedPin?: string): boolean {
   if (!inputPin) return false;
-  return inputPin.trim() === expectedPin;
+  const target = expectedPin || getActiveVenuePin();
+  return inputPin.trim() === target.trim();
 }
 
 /**

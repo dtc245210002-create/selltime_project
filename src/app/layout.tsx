@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ViewModeProvider } from "@/components/ViewModeContext";
 
 export const metadata: Metadata = {
-  title: "SellTime - Bạn có bao nhiêu thời gian để bán?",
+  title: "SellTime - Sàn việc làm theo giờ rảnh | Time-First Marketplace",
   description: "Thị trường việc làm theo giờ linh hoạt cho sinh viên & chủ quán F&B tại Thái Nguyên",
   icons: {
     icon: "/logo.png",
@@ -25,7 +26,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <ViewModeProvider>{children}</ViewModeProvider>
+      </body>
     </html>
   );
 }

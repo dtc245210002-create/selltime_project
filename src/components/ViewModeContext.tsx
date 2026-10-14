@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type ThemeMode = "dark" | "light";
+export type LanguageMode = "vi" | "en";
 
 interface ViewModeContextType {
   viewMode: "desktop" | "mobile";
@@ -11,6 +12,10 @@ interface ViewModeContextType {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
+  language: LanguageMode;
+  setLanguage: (lang: LanguageMode) => void;
+  toggleLanguage: () => void;
+  t: (vi: string, en: string) => string;
 }
 
 export const ViewModeContext = createContext<ViewModeContextType>({
@@ -20,12 +25,17 @@ export const ViewModeContext = createContext<ViewModeContextType>({
   theme: "dark",
   setTheme: () => {},
   toggleTheme: () => {},
+  language: "vi",
+  setLanguage: () => {},
+  toggleLanguage: () => {},
+  t: (vi: string, _en: string) => vi,
 });
 
 export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [theme, setThemeState] = useState<ThemeMode>("dark");
+  const [language, setLanguageState] = useState<LanguageMode>("vi");
 
   useEffect(() => {
     const handleResize = () => {
@@ -38,6 +48,7 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
+      // 1. Phục hồi Theme
       const savedTheme = localStorage.getItem("selltime_theme") as ThemeMode | null;
       if (savedTheme === "light" || savedTheme === "dark") {
         setThemeState(savedTheme);
@@ -46,6 +57,13 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
         } else {
           document.documentElement.classList.remove("light");
         }
+      }
+
+      // 2. Phục hồi Ngôn ngữ
+      const savedLang = localStorage.getItem("selltime_lang") as LanguageMode | null;
+      if (savedLang === "vi" || savedLang === "en") {
+        setLanguageState(savedLang);
+        document.documentElement.setAttribute("lang", savedLang);
       }
     } catch {
       // ignore
@@ -70,6 +88,24 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  const setLanguage = (newLang: LanguageMode) => {
+    setLanguageState(newLang);
+    try {
+      localStorage.setItem("selltime_lang", newLang);
+    } catch {
+      // ignore
+    }
+    document.documentElement.setAttribute("lang", newLang);
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === "vi" ? "en" : "vi");
+  };
+
+  const t = (vi: string, en: string) => {
+    return language === "en" ? en : vi;
+  };
+
   const isMobile = viewMode === "mobile" || isSmallScreen;
 
   return (
@@ -81,6 +117,10 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
         theme,
         setTheme,
         toggleTheme,
+        language,
+        setLanguage,
+        toggleLanguage,
+        t,
       }}
     >
       {children}

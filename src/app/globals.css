@@ -7,6 +7,22 @@
   color-scheme: dark;
 }
 
+html {
+  font-size: 13px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 13.5px;
+  }
+}
+
+@media (min-width: 1536px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -146,15 +162,15 @@ html.light .text-slate-300 {
 }
 
 html.light .text-slate-400 {
-  color: #64748B !important;
+  color: #475569 !important;
 }
 
 html.light .text-slate-500 {
-  color: #94A3B8 !important;
+  color: #334155 !important;
 }
 
 html.light .text-slate-600 {
-  color: #64748B !important;
+  color: #475569 !important;
 }
 
 /* CRITICAL: Keep Text Pure White on Solid Colored Action Buttons, Logos, and Badges */

@@ -20,6 +20,9 @@ import { Shift, User, UserRole } from "../domain/types";
 import { MOCK_CANDIDATE_USER, MOCK_EMPLOYER_USER, INITIAL_SHIFTS } from "../application/store";
 import { ApplicationStepper, ApplicationStep } from "./ApplicationStepper";
 import { useViewMode } from "./ViewModeContext";
+import { getSupabaseBrowserClient } from "../infrastructure/supabaseBrowser";
+import { getActiveVenuePin } from "../domain/trust-battery";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface ChatMessage {
   id: string;
@@ -54,7 +57,7 @@ export function MessagesTab({
   currentUser = MOCK_CANDIDATE_USER,
   currentRole = "CANDIDATE",
   onOpenCheckin,
-  demoOnly = true,
+  demoOnly = false,
 }: MessagesTabProps) {
   const isEmployer = currentRole === "EMPLOYER";
   const myUser = currentUser || (isEmployer ? MOCK_EMPLOYER_USER : MOCK_CANDIDATE_USER);
@@ -111,8 +114,6 @@ export function MessagesTab({
   const { isMobile } = useViewMode();
   const [activeConvId, setActiveConvId] = useState<string>("conv_1");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loadedDemoKey, setLoadedDemoKey] = useState<string | null>(null);
-  const demoKey = `selltime_demo_chat_${myUser.id}_${activeConvId}`;
   const [lastMessagesMap, setLastMessagesMap] = useState<Record<string, { text: string; time: string }>>({});
   const [inputVal, setInputVal] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -120,7 +121,16 @@ export function MessagesTab({
   const [mobileView, setMobileView] = useState<"list" | "chat" | "details">("list");
   const [isConnected, setIsConnected] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
+  const [currentVenuePin, setCurrentVenuePin] = useState<string>("8866");
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const activeChannelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    setCurrentVenuePin(getActiveVenuePin());
+    const handlePinChange = () => setCurrentVenuePin(getActiveVenuePin());
+    window.addEventListener("selltime_venue_pin_changed", handlePinChange);
+    return () => window.removeEventListener("selltime_venue_pin_changed", handlePinChange);
+  }, []);
 
   const scrollToBottom = (smooth = true) => {
     if (chatScrollRef.current) {
@@ -133,160 +143,156 @@ export function MessagesTab({
 
   const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
 
+  // Mẫu tin nhắn nhanh 1-chạm theo yêu cầu:
+  // "Tôi đã đến quán", "Vui lòng cho tôi xin mã PIN", "Gửi vị trí chỉ đường"
   const quickReplies = isEmployer
     ? [
+        `Mã PIN quầy hôm nay là: ${currentVenuePin}`,
+        "Quán ở ngay ngã ba, đối diện cổng trường TNUT nhé em",
+        "Chị đã ký quỹ Escrow bảo chứng rồi, em cứ yên tâm làm nhé!",
         "Chào em, em qua quán trước 10 phút nhận đồng phục nhé!",
-        "Em đến quán cứ vào quầy thu ngân gặp chị nha.",
-        "Chị đã nạp ký quỹ Escrow rồi, xong ca nhận tiền ngay nhé!",
-        "Em làm tốt lắm, chị gửi đánh giá 5 sao cho em nhé!",
       ]
     : [
-        "Dạ em chào chị, em đã đến trước cửa quán rồi ạ!",
-        "Em vừa học xong ở TNUT, em chạy qua quán 5 phút nữa tới ạ.",
-        "Chị ơi mã PIN check-in tại quầy hôm nay là 8866 đúng không ạ?",
-        "Em vừa bấm check-out hoàn thành ca rồi ạ, cảm ơn chị!",
+        "Tôi đã đến quán",
+        "Vui lòng cho tôi xin mã PIN",
+        "Gửi vị trí chỉ đường",
+        "Em vừa bấm check-out hoàn thành ca rồi ạ!",
       ];
 
-  const fetchMessages = async (convId: string, silent = false) => {
-    try {
-      const res = await fetch(`/api/messages?conversation_id=${convId}&t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.data)) {
-        setIsConnected(true);
-        if (convId === activeConvId) {
-          setMessages((prev) => {
-            if (
-              prev.length === data.data.length &&
-              prev[prev.length - 1]?.id === data.data[data.data.length - 1]?.id
-            ) {
-              return prev;
-            }
-            return data.data;
-          });
-        }
-
-        if (data.data.length > 0) {
-          const lastMsg = data.data[data.data.length - 1];
-          setLastMessagesMap((prev) => ({
-            ...prev,
-            [convId]: { text: lastMsg.content, time: lastMsg.created_at },
-          }));
-        }
-
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.setItem(`selltime_chat_${convId}`, JSON.stringify(data.data));
-          }
-        } catch (e) {}
-      }
-    } catch (err) {
-      if (!silent) console.warn("Lỗi fetch tin nhắn:", err);
-      setIsConnected(false);
-    }
-  };
-
+  // KẾT NỐI SUPABASE REALTIME CHANNEL
   useEffect(() => {
-    if (demoOnly) {
-      let sampleMessages: ChatMessage[] = [{
-        id: `demo_${activeConvId}`,
-        conversation_id: activeConvId,
-        sender_id: isEmployer ? MOCK_CANDIDATE_USER.id : MOCK_EMPLOYER_USER.id,
-        sender_name: activeConv.partnerName,
-        sender_avatar: activeConv.partnerAvatar,
-        content: activeConv.defaultLastMessage,
-        created_at: activeConv.defaultTime,
-      }];
-      try {
-        const cached = JSON.parse(localStorage.getItem(demoKey) || "null");
-        if (Array.isArray(cached)) sampleMessages = cached;
-      } catch (_) {}
-      setMessages(sampleMessages);
-      setLoadedDemoKey(demoKey);
-      setIsConnected(false);
-      setLastMessagesMap({});
-      return;
-    }
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(`selltime_chat_${activeConvId}`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setMessages(parsed);
-          }
-        }
-      } catch (e) {}
-    }
+    const sharedKey = `selltime_shared_chat_${activeConvId}`;
+    let initialMsgs: ChatMessage[] = [];
 
-    fetchMessages(activeConvId);
-
-    // Initial clean scroll inside chat container only
-    setTimeout(() => {
-      scrollToBottom(false);
-    }, 60);
-
-    let es: EventSource | null = null;
     try {
-      const topic = `selltime_v1_chat_${activeConvId.replace(/[^a-zA-Z0-9_]/g, "")}`;
-      es = new EventSource(`https://ntfy.sh/${topic}/sse`);
+      const cached = localStorage.getItem(sharedKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          initialMsgs = parsed;
+        }
+      }
+    } catch (_) {}
 
-      es.onopen = () => {
-        setIsConnected(true);
-      };
+    if (initialMsgs.length === 0) {
+      initialMsgs = [
+        {
+          id: `init_${activeConvId}`,
+          conversation_id: activeConvId,
+          sender_id: isEmployer ? MOCK_CANDIDATE_USER.id : MOCK_EMPLOYER_USER.id,
+          sender_name: activeConv.partnerName,
+          sender_avatar: activeConv.partnerAvatar,
+          content: activeConv.defaultLastMessage,
+          created_at: activeConv.defaultTime,
+        },
+      ];
+      try {
+        localStorage.setItem(sharedKey, JSON.stringify(initialMsgs));
+      } catch (_) {}
+    }
 
-      es.onmessage = (event) => {
+    setMessages(initialMsgs);
+    setTimeout(() => scrollToBottom(false), 50);
+
+    // Kết nối Supabase Realtime Channel
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      const channelName = `selltime_chat_${activeConvId}`;
+      const channel = supabase.channel(channelName, {
+        config: { broadcast: { self: false } },
+      });
+
+      channel
+        .on("broadcast", { event: "new_message" }, ({ payload }) => {
+          if (payload && payload.id) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === payload.id)) return prev;
+              const next = [...prev, payload];
+              try {
+                localStorage.setItem(sharedKey, JSON.stringify(next));
+              } catch (_) {}
+              return next;
+            });
+
+            setLastMessagesMap((prev) => ({
+              ...prev,
+              [activeConvId]: { text: payload.content, time: payload.created_at },
+            }));
+
+            setTimeout(() => scrollToBottom(true), 40);
+          }
+        })
+        .on("broadcast", { event: "reset_chat" }, () => {
+          setMessages([]);
+          try {
+            localStorage.removeItem(sharedKey);
+          } catch (_) {}
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            setIsConnected(true);
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            setIsConnected(false);
+          }
+        });
+
+      activeChannelRef.current = channel;
+    }
+
+    // Lắng nghe sự kiện storage & custom event đồng bộ giữa các tab trên cùng máy
+    const handleLocalBroadcast = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.convId === activeConvId) {
+        const incomingMsg = customEvent.detail.message as ChatMessage;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === incomingMsg.id)) return prev;
+          return [...prev, incomingMsg];
+        });
+        setLastMessagesMap((prev) => ({
+          ...prev,
+          [activeConvId]: { text: incomingMsg.content, time: incomingMsg.created_at },
+        }));
+        setTimeout(() => scrollToBottom(true), 40);
+      }
+    };
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === sharedKey && e.newValue) {
         try {
-          const parsed = JSON.parse(event.data);
-          if (parsed.event === "message" && parsed.message) {
-            const incoming: ChatMessage = JSON.parse(parsed.message);
-            if (incoming && incoming.id && incoming.content) {
-              setMessages((prev) => {
-                if (prev.some((m) => m.id === incoming.id)) return prev;
-                const updated = [...prev, incoming];
-                try {
-                  localStorage.setItem(`selltime_chat_${activeConvId}`, JSON.stringify(updated));
-                } catch (e) {}
-                return updated;
-              });
-
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setMessages(parsed);
+            if (parsed.length > 0) {
+              const last = parsed[parsed.length - 1];
               setLastMessagesMap((prev) => ({
                 ...prev,
-                [activeConvId]: { text: incoming.content, time: incoming.created_at },
+                [activeConvId]: { text: last.content, time: last.created_at },
               }));
             }
+            setTimeout(() => scrollToBottom(true), 40);
           }
-        } catch (e) {}
-      };
-    } catch (e) {
-      console.warn("EventSource setup warning:", e);
-    }
+        } catch (_) {}
+      }
+    };
 
-    const interval = setInterval(() => {
-      fetchMessages(activeConvId, true);
-    }, 2500);
+    window.addEventListener("selltime_chat_broadcast", handleLocalBroadcast);
+    window.addEventListener("storage", handleStorageEvent);
 
     return () => {
-      if (es) es.close();
-      clearInterval(interval);
+      if (activeChannelRef.current && supabase) {
+        supabase.removeChannel(activeChannelRef.current);
+        activeChannelRef.current = null;
+      }
+      window.removeEventListener("selltime_chat_broadcast", handleLocalBroadcast);
+      window.removeEventListener("storage", handleStorageEvent);
     };
-  }, [activeConvId, demoOnly, demoKey]);
+  }, [activeConvId, activeConv.defaultLastMessage, activeConv.defaultTime, activeConv.partnerAvatar, activeConv.partnerName, isEmployer]);
 
-  useEffect(() => {
-    if (!demoOnly || loadedDemoKey !== demoKey) return;
-    try {
-      localStorage.setItem(demoKey, JSON.stringify(messages));
-    } catch (_) {}
-  }, [demoOnly, loadedDemoKey, demoKey, messages]);
-
-  // Only scroll inner container when new messages arrive AND user is already at the bottom
+  // Tự động scroll khi tin nhắn mới đến
   useEffect(() => {
     if (chatScrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
       if (isNearBottom) {
         scrollToBottom(true);
       }
@@ -294,8 +300,19 @@ export function MessagesTab({
   }, [messages.length]);
 
   const handleSend = async (contentToSend?: string) => {
-    const text = (contentToSend || inputVal).trim();
+    let text = (contentToSend || inputVal).trim();
     if (!text || isSending) return;
+
+    // Biến đổi mẫu nhanh đặc biệt thành câu hoàn chỉnh phù hợp vai trò
+    if (text === "Vui lòng cho tôi xin mã PIN") {
+      text = "Chị ơi cho em xin mã PIN điểm danh tại quầy hôm nay với ạ!";
+    } else if (text === "Gửi vị trí chỉ đường") {
+      text = isEmployer
+        ? `Vị trí của quán: ${activeConv.shift.location_address}. Em bấm nút 'Chỉ đường' để mở Google Maps nhé!`
+        : "Dạ em đang trên đường qua, chị cho em xin vị trí và chỉ đường chính xác tới quán với ạ!";
+    } else if (text === "Tôi đã đến quán") {
+      text = "Dạ em chào chị, em đã có mặt trước cửa quán rồi ạ!";
+    }
 
     setIsSending(true);
 
@@ -316,7 +333,17 @@ export function MessagesTab({
       created_at: timeStr,
     };
 
-    setMessages((prev) => [...prev, newMsg]);
+    const sharedKey = `selltime_shared_chat_${activeConvId}`;
+
+    // 1. Cập nhật lạc quan vào state hiện tại
+    setMessages((prev) => {
+      const updated = [...prev, newMsg];
+      try {
+        localStorage.setItem(sharedKey, JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+
     setLastMessagesMap((prev) => ({
       ...prev,
       [activeConvId]: { text: newMsg.content, time: newMsg.created_at },
@@ -324,16 +351,38 @@ export function MessagesTab({
     setInputVal("");
     setTimeout(() => scrollToBottom(true), 30);
 
+    // 2. Bắn sự kiện đồng bộ tab nội bộ
     try {
-      if (demoOnly) return; // Mock send stays in this browser, never in API/ntfy.
-      await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMsg),
-      });
-      fetchMessages(activeConvId, true);
+      window.dispatchEvent(
+        new CustomEvent("selltime_chat_broadcast", {
+          detail: { convId: activeConvId, message: newMsg },
+        })
+      );
+    } catch (_) {}
+
+    // 3. Bắn Realtime Broadcast qua Supabase Channel cho 2 thiết bị (PC ↔ Điện thoại)
+    try {
+      if (activeChannelRef.current) {
+        await activeChannelRef.current.send({
+          type: "broadcast",
+          event: "new_message",
+          payload: newMsg,
+        });
+      }
     } catch (err) {
-      console.error("Lỗi gửi tin nhắn:", err);
+      console.warn("Supabase Realtime broadcast warning:", err);
+    }
+
+    // 4. Đồng bộ lên database nếu có phiên thật
+    try {
+      if (currentUser && !currentUser.id.startsWith("demo_") && !currentUser.id.startsWith("user_")) {
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newMsg),
+        });
+      }
+    } catch (_) {
     } finally {
       setIsSending(false);
     }
@@ -347,26 +396,36 @@ export function MessagesTab({
     if (!confirmReset) return;
 
     setIsResetting(true);
+    const sharedKey = `selltime_shared_chat_${activeConvId}`;
+
     try {
-      if (demoOnly) {
-        setMessages([]);
-        setLastMessagesMap((prev) => {
-          const next = { ...prev };
-          delete next[activeConvId];
-          return next;
-        });
-        localStorage.removeItem(demoKey);
-        return;
-      }
-      const res = await fetch(`/api/messages?conversation_id=${activeConvId}`, {
-        method: "DELETE",
+      const resetMsg: ChatMessage = {
+        id: `init_${Date.now()}`,
+        conversation_id: activeConvId,
+        sender_id: isEmployer ? MOCK_CANDIDATE_USER.id : MOCK_EMPLOYER_USER.id,
+        sender_name: activeConv.partnerName,
+        sender_avatar: activeConv.partnerAvatar,
+        content: activeConv.defaultLastMessage,
+        created_at: activeConv.defaultTime,
+      };
+
+      setMessages([resetMsg]);
+      setLastMessagesMap((prev) => {
+        const next = { ...prev };
+        delete next[activeConvId];
+        return next;
       });
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.data)) {
-        setMessages(data.data);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(`selltime_chat_${activeConvId}`);
-        }
+
+      try {
+        localStorage.setItem(sharedKey, JSON.stringify([resetMsg]));
+      } catch (_) {}
+
+      if (activeChannelRef.current) {
+        await activeChannelRef.current.send({
+          type: "broadcast",
+          event: "reset_chat",
+          payload: { convId: activeConvId },
+        });
       }
     } catch (err) {
       console.error("Lỗi reset chat:", err);
@@ -497,7 +556,9 @@ export function MessagesTab({
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             </div>
             <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
-              <span className="text-emerald-400 font-medium">{demoOnly ? "Chat DEMO local — không gửi tới người thật" : "Trực tuyến"}</span>
+              <span className="text-emerald-400 font-medium">
+                {isConnected ? "Trực tuyến (Supabase Realtime)" : "Đang kết nối Realtime"}
+              </span>
               <span>•</span>
               <span className="truncate">{activeConv.partnerRoleTitle}</span>
             </p>
@@ -532,8 +593,10 @@ export function MessagesTab({
       {/* Sync Status Banner */}
       <div className="bg-slate-900/60 border-b border-slate-800/80 px-3 py-1 flex items-center justify-between text-[10px] text-slate-400">
         <div className="flex items-center gap-1.5">
-          <Wifi className="w-3 h-3 text-emerald-400" />
-          <span>{demoOnly ? "DEMO: chỉ lưu trong trình duyệt" : "Cloud P2P trực tuyến"}</span>
+          <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+          <span className="font-medium text-slate-300">
+            {isConnected ? "Kênh Supabase Realtime: Đồng bộ tức thì 2 thiết bị PC ↔ Điện thoại" : "Đang kết nối Realtime Channel..."}
+          </span>
         </div>
         <span className="font-mono text-slate-400">
           {messages.length} tin

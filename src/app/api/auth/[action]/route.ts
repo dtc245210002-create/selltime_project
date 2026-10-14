@@ -1,4 +1,4 @@
-import { authenticate, authConfig, authFailure, authResponse, cookieValue, createRequestClient, REFRESH_COOKIE, sessionCookies, verifyToken } from "@/infrastructure/auth/server";
+import { ACCESS_COOKIE, authenticate, authConfig, authFailure, authResponse, cookieValue, createRequestClient, REFRESH_COOKIE, sessionCookies, verifyToken } from "@/infrastructure/auth/server";
 import { AuthError, boundedString, readBody, requireOrigin, requireRole } from "@/infrastructure/auth/policy";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +52,27 @@ export async function POST(req: Request, context: Context) {
         return sessionCookies(authResponse({ success: true, identity }), data.session);
       } catch (error) { return sessionCookies(authFailure(error), null); }
     }
+    if (action === "forgot-password") {
+      const body = await readBody(req);
+      const email = boundedString(body.email, 120, "Email");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "Email không hợp lệ.");
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth` });
+      if (error) throw new AuthError(400, "Không thể gửi email khôi phục mật khẩu.");
+      return authResponse({ success: true, message: `Email khôi phục mật khẩu đã được gửi tới ${email}.` });
+    }
+    if (action === "update-password") {
+      const authorization = req.headers.get("authorization");
+      const token = authorization ? /^Bearer ([^\s]+)$/.exec(authorization)?.[1] : cookieValue(req, ACCESS_COOKIE);
+      if (!token) throw new AuthError(401, "Yêu cầu mã phiên khôi phục mật khẩu.");
+      const body = await readBody(req);
+      if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 128) {
+        throw new AuthError(400, "Mật khẩu mới cần 8–128 ký tự.");
+      }
+      const tokenClient = createRequestClient(token);
+      const { error } = await tokenClient.auth.updateUser({ password: body.password });
+      if (error) throw new AuthError(400, "Không thể cập nhật mật khẩu.");
+      return authResponse({ success: true, message: "Mật khẩu đã được cập nhật thành công." });
+    }
     if (!["signup", "login"].includes(action)) throw new AuthError(404, "Không có thao tác này.");
     const body = await readBody(req);
     if (body.role !== undefined && body.role !== "CANDIDATE") throw new AuthError(403, "Đăng ký chỉ tạo Candidate.");
@@ -59,7 +80,14 @@ export async function POST(req: Request, context: Context) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "Email không hợp lệ.");
     if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 128) throw new AuthError(400, "Mật khẩu cần 8–128 ký tự.");
     const result = action === "signup"
-      ? await client.auth.signUp({ email, password: body.password, options: { data: { full_name: boundedString(body.full_name, 100, "Họ tên") } } })
+      ? await client.auth.signUp({
+          email,
+          password: body.password,
+          options: {
+            data: { full_name: boundedString(body.full_name, 100, "Họ tên") },
+            emailRedirectTo: `${origin}/auth`,
+          },
+        })
       : await client.auth.signInWithPassword({ email, password: body.password });
     if (result.error) throw new AuthError(action === "login" ? 401 : 400, "Không thể đăng nhập hoặc đăng ký với thông tin này.");
     if (!result.data.session) return authResponse({ success: true, confirmationRequired: true });

@@ -48,6 +48,11 @@ export function ProfileTab({
   onUpdateUser?: (updatedUser: Partial<UserType>) => void;
 }) {
   const [balance, setBalance] = useState(walletBalance);
+
+  React.useEffect(() => {
+    setBalance(walletBalance);
+  }, [walletBalance]);
+
   const [bankCode, setBankCode] = useState("MB");
   const [accountNumber, setAccountNumber] = useState("0987654321");
   const [accountName, setAccountName] = useState(user.full_name.toUpperCase());

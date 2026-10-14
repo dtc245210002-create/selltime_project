@@ -291,9 +291,15 @@ export function AuthModal({
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           <span>DEMO local — chưa xác thực tài khoản hoặc eKYC</span>
         </div>
-        <a href="/auth" className="mt-3 block text-center text-xs text-purple-300 hover:text-purple-200">
-          Mở khu vực tài khoản thật riêng biệt
-        </a>
+        <div className="mt-3 pt-3 border-t border-slate-800">
+          <a
+            href="/auth"
+            className="w-full py-2 px-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-purple-500/30 text-purple-300 hover:text-purple-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Mở Cổng Xác Thực Email Thật (Supabase Online)</span>
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Shift } from "../domain/types";
 import { calculateHaversineDistance } from "../domain/matching-engine";
-import { VENUE_PIN, verifyCheckinPin } from "../domain/trust-battery";
+import { getActiveVenuePin, verifyCheckinPin } from "../domain/trust-battery";
 
 interface CheckinModalProps {
   isOpen: boolean;
@@ -38,7 +38,7 @@ export function CheckinModal({
     latitude: number;
     longitude: number;
   }>({
-    latitude: 21.5928, // Giả lập gần quán The Cuppa (~25m)
+    latitude: 21.5928, // Mặc định gần quán (~25m)
     longitude: 105.8339,
   });
   const [distanceMeters, setDistanceMeters] = useState<number>(25);
@@ -51,6 +51,24 @@ export function CheckinModal({
   const [otpValue, setOtpValue] = useState<string>("");
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState(false);
+
+  // Tự động kiểm tra GPS thiết bị khi mở modal
+  useEffect(() => {
+    if (isOpen && typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCandidateCoords({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        },
+        () => {
+          // Bỏ qua nếu người dùng chưa cho phép, giữ tọa độ mẫu gần quán
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [isOpen]);
 
   // Tính khoảng cách khi tọa độ thay đổi hoặc khi mở modal
   useEffect(() => {
@@ -85,9 +103,9 @@ export function CheckinModal({
       (err) => {
         setIsGpsLoading(false);
         setGpsError(
-          "Không thể truy cập GPS (" +
+          "Không thể truy cập GPS thực tế (" +
             err.message +
-            "). Bạn có thể chuyển sang tab 'Nhập Mã PIN Tại Quầy' để check-in ngay."
+            "). Bạn có thể chuyển sang tab 'Mã PIN Tại Quầy' để điểm danh ngay."
         );
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -128,6 +146,7 @@ export function CheckinModal({
       setOtpError("Vui lòng nhập mã PIN tại quầy.");
       return;
     }
+    // Đối soát thời gian thực với PIN của Quán cài đặt
     if (verifyCheckinPin(cleanPin)) {
       setOtpSuccess(true);
       setOtpError(null);
@@ -140,7 +159,7 @@ export function CheckinModal({
       }, 1200);
     } else {
       setOtpSuccess(false);
-      setOtpError("Mã PIN không đúng. Vui lòng hỏi nhân viên quầy thu ngân.");
+      setOtpError(`Mã PIN "${cleanPin}" không khớp với mã quầy hôm nay. Vui lòng hỏi nhân viên thu ngân.`);
     }
   };
 
@@ -374,10 +393,10 @@ export function CheckinModal({
 
               <div className="bg-slate-900 border border-slate-800 rounded-md p-3 text-xs text-slate-300">
                 <span>
-                  Dùng mã PIN mẫu để thử luồng check-in DEMO:
+                  Nhập mã PIN 4 số do Chủ Quán ({shift.employer_name}) cài đặt tại quầy:
                 </span>
                 <span className="block font-mono font-bold text-purple-400 mt-1">
-                  Mã PIN DEMO: {VENUE_PIN}
+                  Mã PIN quầy hôm nay: {getActiveVenuePin()}
                 </span>
               </div>
 

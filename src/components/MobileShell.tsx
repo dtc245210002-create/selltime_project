@@ -16,6 +16,9 @@ import {
   Sun,
   Moon,
   BookOpen,
+  ShieldCheck,
+  ShieldAlert,
+  Globe,
 } from "lucide-react";
 import { User as UserType } from "../domain/types";
 import { useViewMode } from "./ViewModeContext";
@@ -41,14 +44,14 @@ export function MobileShell({
   onLogout,
   onOpenGuide,
 }: MobileShellProps) {
-  const { theme, toggleTheme } = useViewMode();
+  const { theme, toggleTheme, language, toggleLanguage, t } = useViewMode();
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   const tabs = [
-    { id: "explore", label: "Khám phá", icon: Compass },
-    { id: "my-shifts", label: "Ca của tôi", icon: CalendarCheck2 },
-    { id: "messages", label: "Tin nhắn", icon: MessageSquare, badge: 2 },
-    { id: "profile", label: "Cá nhân", icon: UserCheck },
+    { id: "explore", label: t("Khám phá", "Explore"), icon: Compass },
+    { id: "my-shifts", label: t("Ca của tôi", "My Shifts"), icon: CalendarCheck2 },
+    { id: "messages", label: t("Tin nhắn", "Messages"), icon: MessageSquare, badge: 2 },
+    { id: "profile", label: t("Cá nhân", "Profile"), icon: UserCheck },
   ];
 
   return (
@@ -132,17 +135,47 @@ export function MobileShell({
               </button>
             )}
 
+            {/* Cổng Supabase Auth Trực Tuyến */}
+            <a
+              href="/auth"
+              className="flex items-center gap-1.5 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs"
+              title="Đăng ký & Xác thực Tài khoản Email Thật qua Supabase"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden md:inline">Supabase Auth</span>
+            </a>
+
+            {/* Cổng Quản Trị Viên & Phân Quyền */}
+            <a
+              href="/admin"
+              className="flex items-center gap-1.5 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-800/60 text-purple-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs"
+              title="Mở Bảng Điều Khiển Quản Trị Viên & Phân Quyền (Admin Console)"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden md:inline">Admin Portal</span>
+            </a>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center shadow-sm"
-              title={theme === "dark" ? "Chuyển sang Giao diện Sáng (Light Mode)" : "Chuyển sang Giao diện Tối (Dark Mode)"}
+              title={theme === "dark" ? t("Chuyển sang Giao diện Sáng (Light)", "Switch to Light Mode") : t("Chuyển sang Giao diện Tối (Dark)", "Switch to Dark Mode")}
             >
               {theme === "dark" ? (
                 <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
               ) : (
                 <Moon className="w-4 h-4 text-purple-600 hover:-rotate-12 transition-transform" />
               )}
+            </button>
+
+            {/* Language Switcher */}
+            <button
+              onClick={toggleLanguage}
+              className="px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-semibold shadow-sm"
+              title={language === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{language === "vi" ? "VI" : "EN"}</span>
             </button>
 
             {/* Pin Uy Tín */}

@@ -149,24 +149,24 @@ export function TimeSliderWidget({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-slate-100 space-y-3.5 shadow-flat">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-slate-100 space-y-3.5 shadow-flat">
       {/* Title & Mode Switcher */}
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800/60">
         <div>
-          <span className="text-[10px] uppercase font-semibold text-purple-400 tracking-wider">
+          <span className="text-xs uppercase font-bold text-purple-400 tracking-wider block">
             Tìm Kiếm Theo Giờ Rảnh
           </span>
-          <h2 className="text-base font-bold text-white mt-0.5 tracking-tight">
+          <h2 className="text-sm sm:text-base font-bold text-white mt-0.5 tracking-tight">
             Hôm nay bạn muốn bán bao nhiêu giờ?
           </h2>
         </div>
 
         {/* Tab Toggle: Kéo Giờ vs Ca Gãy */}
-        <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 shrink-0">
+        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setTimeMode("SLIDER")}
-            className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-colors ${
               timeMode === "SLIDER"
                 ? "bg-purple-600 text-white shadow-xs"
                 : "text-slate-400 hover:text-slate-200"
@@ -180,7 +180,7 @@ export function TimeSliderWidget({
               setTimeMode("SPLIT_SHIFT");
               applyCustomSplit(splitStart, splitEnd);
             }}
-            className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-colors ${
               timeMode === "SPLIT_SHIFT"
                 ? "bg-purple-600 text-white shadow-xs"
                 : "text-slate-400 hover:text-slate-200"
@@ -192,9 +192,9 @@ export function TimeSliderWidget({
       </div>
 
       {/* Search Input & Work Types */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 pointer-events-none" />
           <input
             type="text"
             placeholder="Tìm theo chức danh, ca gãy, địa điểm..."
@@ -202,31 +202,31 @@ export function TimeSliderWidget({
             onChange={(e) =>
               onChange({ ...criteria, search_keyword: e.target.value })
             }
-            className="w-full bg-slate-950 text-white placeholder-slate-500 text-xs rounded-md pl-9 pr-8 py-2 border border-slate-800 focus:outline-none focus:border-purple-500 transition-colors"
+            className="w-full bg-slate-950 text-white placeholder-slate-500 text-sm sm:text-base rounded-xl pl-10 pr-9 py-2.5 border border-slate-800 focus:outline-none focus:border-purple-500 transition-colors"
           />
           {criteria.search_keyword && (
             <button
               onClick={() => onChange({ ...criteria, search_keyword: "" })}
               className="absolute right-2.5 p-1 text-slate-500 hover:text-slate-300"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {/* Filter controls row */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => setShowAiPrompt(!showAiPrompt)}
-            className="flex items-center gap-1 text-[11px] font-medium text-purple-400 hover:text-purple-300 transition-colors"
+            className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-purple-400 hover:text-purple-300 transition-colors"
           >
-            <Sparkles className="w-3 h-3" />
+            <Sparkles className="w-3.5 h-3.5" />
             <span>{showAiPrompt ? "Thu gọn Lọc AI" : "Lọc ngôn ngữ tự nhiên"}</span>
           </button>
 
           {/* Work type filter pills */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {workTypeOptions.map((opt) => {
               const isSelected =
                 (opt.id === "ALL" && (!criteria.work_types || criteria.work_types.length === 0)) ||
@@ -236,7 +236,7 @@ export function TimeSliderWidget({
                   key={opt.id}
                   type="button"
                   onClick={() => handleWorkTypeChange(opt.id)}
-                  className={`text-[10px] font-medium px-2 py-0.5 rounded-md border transition-colors ${
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors ${
                     isSelected
                       ? "bg-slate-800 text-white border-slate-700"
                       : "bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200"
@@ -251,7 +251,7 @@ export function TimeSliderWidget({
 
         {/* AI Natural language drawer */}
         {showAiPrompt && (
-          <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-2 animate-in fade-in">
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2.5 animate-in fade-in">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -259,27 +259,27 @@ export function TimeSliderWidget({
                 value={aiPromptText}
                 onChange={(e) => setAiPromptText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiFilter()}
-                className="flex-1 bg-slate-900 text-white placeholder-slate-500 text-xs rounded-md px-2.5 py-1.5 border border-slate-800 focus:outline-none focus:border-purple-500"
+                className="flex-1 bg-slate-900 text-white placeholder-slate-500 text-xs sm:text-sm rounded-lg px-3 py-2 border border-slate-800 focus:outline-none focus:border-purple-500"
               />
               <button
                 type="button"
                 onClick={() => handleAiFilter()}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs px-2.5 py-1.5 rounded-md flex items-center gap-1 shrink-0 transition-colors"
+                className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm px-3 py-2 rounded-lg flex items-center gap-1.5 shrink-0 transition-colors"
               >
-                <Bot className="w-3.5 h-3.5" />
+                <Bot className="w-4 h-4" />
                 <span>Lọc</span>
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] text-slate-500">Mẫu:</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Mẫu:</span>
               <button
                 type="button"
                 onClick={() => {
                   setAiPromptText("Ca gãy trưa, phục vụ gần TNUT");
                   handleAiFilter("Ca gãy trưa, phục vụ gần TNUT");
                 }}
-                className="text-[10px] bg-slate-900 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
+                className="text-xs bg-slate-900 hover:bg-slate-850 text-slate-300 px-2.5 py-1 rounded-md border border-slate-800 font-medium"
               >
                 🍜 Ca gãy trưa (11h-13h30)
               </button>
@@ -289,14 +289,14 @@ export function TimeSliderWidget({
                   setAiPromptText("Rảnh tối, pha chế The Cuppa");
                   handleAiFilter("Rảnh tối, pha chế The Cuppa");
                 }}
-                className="text-[10px] bg-slate-900 hover:bg-slate-850 text-slate-300 px-2 py-0.5 rounded-md border border-slate-800"
+                className="text-xs bg-slate-900 hover:bg-slate-850 text-slate-300 px-2.5 py-1 rounded-md border border-slate-800 font-medium"
               >
                 🌙 Ca tối • Pha chế
               </button>
             </div>
 
             {aiFeedback && (
-              <p className="text-[10px] text-emerald-400 pt-0.5">
+              <p className="text-xs text-emerald-400 font-semibold pt-0.5">
                 {aiFeedback}
               </p>
             )}
@@ -307,14 +307,14 @@ export function TimeSliderWidget({
       {/* 1. CHẾ ĐỘ KÉO GIỜ TIÊU CHUẨN */}
       {timeMode === "SLIDER" ? (
         <>
-          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5">
             <div className="flex justify-between items-baseline mb-2">
-              <span className="text-xs text-slate-400">Quỹ thời gian rảnh:</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold font-mono text-white">
+              <span className="text-sm text-slate-400 font-semibold">Quỹ thời gian rảnh:</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black font-mono text-white">
                   {criteria.hours_to_sell}
                 </span>
-                <span className="text-xs text-slate-400 font-medium">tiếng</span>
+                <span className="text-sm text-slate-400 font-bold">tiếng</span>
               </div>
             </div>
 
@@ -327,10 +327,10 @@ export function TimeSliderWidget({
               onChange={(e) =>
                 onChange({ ...criteria, hours_to_sell: parseFloat(e.target.value) })
               }
-              className="w-full h-1.5 bg-slate-800 rounded-md appearance-none cursor-pointer accent-purple-500"
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
             />
 
-            <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+            <div className="flex justify-between text-xs text-slate-400 mt-2 font-mono font-semibold">
               <span>1h</span>
               <span>4h (Tiêu chuẩn)</span>
               <span>8h</span>
@@ -340,25 +340,25 @@ export function TimeSliderWidget({
 
           {/* Shift Periods Selector */}
           <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">
+            <label className="text-xs sm:text-sm font-bold text-slate-300 mb-2 block">
               Khung giờ khả dụng:
             </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-2">
               {periods.map((p) => {
                 const isSelected = criteria.selected_periods.includes(p.id);
                 return (
                   <button
                     key={p.id}
                     onClick={() => togglePeriod(p.id)}
-                    className={`py-2 px-1 rounded-md text-center border transition-colors flex flex-col items-center justify-center ${
+                    className={`py-2.5 px-1 rounded-xl text-center border transition-colors flex flex-col items-center justify-center ${
                       isSelected
-                        ? "bg-purple-600 text-white font-semibold border-purple-500 shadow-sm"
+                        ? "bg-purple-600 text-white font-bold border-purple-500 shadow-md"
                         : "bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-850 hover:text-white"
                     }`}
                   >
-                    <span className="text-sm">{p.icon}</span>
-                    <span className="text-xs font-medium mt-0.5">{p.label}</span>
-                    <span className="text-[9px] opacity-75">{p.hours}</span>
+                    <span className="text-base sm:text-lg">{p.icon}</span>
+                    <span className="text-xs sm:text-sm font-bold mt-1">{p.label}</span>
+                    <span className="text-[11px] opacity-80 font-medium">{p.hours}</span>
                   </button>
                 );
               })}
@@ -367,48 +367,48 @@ export function TimeSliderWidget({
         </>
       ) : (
         /* 2. CHẾ ĐỘ TỰ NHẬP CA GÃY LINH HOẠT (SPLIT SHIFT MODE) */
-        <div className="space-y-3 bg-slate-950 border border-purple-900/40 rounded-xl p-3.5">
+        <div className="space-y-3.5 bg-slate-950 border border-purple-900/40 rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm font-bold text-purple-300 flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-amber-400" /> Tự nhập khung giờ ca gãy của bạn:
             </span>
-            <span className="text-[11px] font-bold font-mono text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/40">
+            <span className="text-xs sm:text-sm font-bold font-mono text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-lg border border-emerald-800/40">
               {criteria.hours_to_sell} tiếng rảnh
             </span>
           </div>
 
           {/* Form nhập thời gian cụ thể */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-[10px] font-medium text-slate-400 block mb-1">
+              <label className="text-xs font-semibold text-slate-400 block mb-1">
                 Giờ bắt đầu rảnh:
               </label>
               <input
                 type="time"
                 value={splitStart}
                 onChange={(e) => applyCustomSplit(e.target.value, splitEnd)}
-                className="w-full bg-slate-900 border border-slate-800 text-white text-xs font-mono font-bold rounded-lg p-2 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-slate-900 border border-slate-800 text-white text-sm font-mono font-bold rounded-xl p-2.5 focus:border-purple-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-slate-400 block mb-1">
+              <label className="text-xs font-semibold text-slate-400 block mb-1">
                 Giờ kết thúc rảnh:
               </label>
               <input
                 type="time"
                 value={splitEnd}
                 onChange={(e) => applyCustomSplit(splitStart, e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-white text-xs font-mono font-bold rounded-lg p-2 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-slate-900 border border-slate-800 text-white text-sm font-mono font-bold rounded-xl p-2.5 focus:border-purple-500 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Quick Presets Ca Gãy */}
-          <div className="space-y-1.5 pt-1">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+          <div className="space-y-2 pt-1">
+            <span className="text-xs text-slate-400 uppercase tracking-wider block font-bold">
               Chọn nhanh ca gãy phổ biến sinh viên:
             </span>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {splitPresets.map((preset, idx) => (
                 <button
                   key={idx}
@@ -416,13 +416,13 @@ export function TimeSliderWidget({
                   onClick={() => {
                     applyCustomSplit(preset.start, preset.end);
                   }}
-                  className={`text-[11px] text-left p-2 rounded-lg border transition-all ${
+                  className={`text-xs text-left p-2.5 rounded-xl border transition-all ${
                     splitStart === preset.start && splitEnd === preset.end
                       ? "bg-purple-950/80 border-purple-600 text-purple-200 font-bold shadow-xs"
                       : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850 hover:text-white"
                   }`}
                 >
-                  <span className="block truncate">{preset.label}</span>
+                  <span className="block truncate font-semibold">{preset.label}</span>
                 </button>
               ))}
             </div>
@@ -431,36 +431,36 @@ export function TimeSliderWidget({
       )}
 
       {/* Advanced Filter Toggle */}
-      <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
+      <div className="flex justify-between items-center pt-2.5 border-t border-slate-800 text-xs sm:text-sm">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors font-semibold"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-4 h-4" />
           <span>Bán kính & Lương sàn</span>
           {showAdvanced ? (
-            <ChevronUp className="w-3.5 h-3.5" />
+            <ChevronUp className="w-4 h-4" />
           ) : (
-            <ChevronDown className="w-3.5 h-3.5" />
+            <ChevronDown className="w-4 h-4" />
           )}
         </button>
 
-        <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
-          <Zap className="w-3 h-3" />
+        <div className="flex items-center gap-1.5 text-emerald-400 text-xs sm:text-sm font-bold">
+          <Zap className="w-4 h-4" />
           <span>{matchCount} ca phù hợp</span>
         </div>
       </div>
 
       {/* Advanced Filter Content */}
       {showAdvanced && (
-        <div className="pt-2.5 border-t border-slate-800 space-y-2.5 bg-slate-950 p-2.5 rounded-md">
+        <div className="pt-3 border-t border-slate-800 space-y-3 bg-slate-950 p-3 rounded-xl">
           {/* Radius Slider */}
           <div>
-            <div className="flex justify-between text-xs mb-1 text-slate-400">
-              <span className="flex items-center gap-1">
-                <Navigation className="w-3 h-3 text-slate-500" /> Bán kính tối đa:
+            <div className="flex justify-between text-xs sm:text-sm mb-1.5 text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Navigation className="w-3.5 h-3.5 text-slate-500" /> Bán kính tối đa:
               </span>
-              <span className="font-mono font-medium text-white">
+              <span className="font-mono font-bold text-white">
                 {criteria.max_distance_km} km
               </span>
             </div>
@@ -476,17 +476,17 @@ export function TimeSliderWidget({
                   max_distance_km: parseFloat(e.target.value),
                 })
               }
-              className="w-full h-1.5 bg-slate-800 rounded-md appearance-none cursor-pointer accent-purple-500"
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
             />
           </div>
 
           {/* Hourly Wage Floor */}
           <div>
-            <div className="flex justify-between text-xs mb-1 text-slate-400">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-slate-500" /> Lương sàn kỳ vọng:
+            <div className="flex justify-between text-xs sm:text-sm mb-1.5 text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Clock className="w-3.5 h-3.5 text-slate-500" /> Lương sàn kỳ vọng:
               </span>
-              <span className="font-mono font-medium text-emerald-400">
+              <span className="font-mono font-bold text-emerald-400">
                 {criteria.min_hourly_rate.toLocaleString("vi-VN")} đ/h
               </span>
             </div>
@@ -502,7 +502,7 @@ export function TimeSliderWidget({
                   min_hourly_rate: parseInt(e.target.value, 10),
                 })
               }
-              className="w-full h-1.5 bg-slate-800 rounded-md appearance-none cursor-pointer accent-emerald-500"
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
             />
           </div>
         </div>

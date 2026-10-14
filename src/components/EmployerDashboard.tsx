@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Shift, User, ShiftPeriod } from "../domain/types";
 import { PaymentQrModal } from "./PaymentQrModal";
+import { getActiveVenuePin } from "../domain/trust-battery";
 
 interface EmployerDashboardProps {
   shifts: Shift[];
@@ -45,6 +46,42 @@ export function EmployerDashboard({
     "active_shifts" | "new_candidates" | "today_roster" | "history"
   >("active_shifts");
 
+  const [venuePin, setVenuePin] = useState<string>("8866");
+  const [isSosReleased, setIsSosReleased] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    setVenuePin(getActiveVenuePin());
+
+    const checkEscrowRelease = () => {
+      try {
+        const releasedFlag = localStorage.getItem("selltime_escrow_sos_released") === "true";
+        const statusesStr = localStorage.getItem("selltime_demo_shift_statuses");
+        const statuses = statusesStr ? JSON.parse(statusesStr) : {};
+        if (releasedFlag || statuses["shift_sos_01"] === "COMPLETED") {
+          setIsSosReleased(true);
+        }
+      } catch (_) {}
+    };
+
+    checkEscrowRelease();
+
+    const handlePinChange = () => setVenuePin(getActiveVenuePin());
+    const handleStorage = () => {
+      setVenuePin(getActiveVenuePin());
+      checkEscrowRelease();
+    };
+
+    window.addEventListener("selltime_venue_pin_changed", handlePinChange);
+    window.addEventListener("selltime_escrow_released", checkEscrowRelease);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("selltime_venue_pin_changed", handlePinChange);
+      window.removeEventListener("selltime_escrow_released", checkEscrowRelease);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
   const [showPostModal, setShowPostModal] = useState(false);
   const [approvedCandidate, setApprovedCandidate] = useState(false);
   const [rejectedCandidate, setRejectedCandidate] = useState(false);
@@ -58,14 +95,18 @@ export function EmployerDashboard({
     {
       id: "tx_01",
       code: "ESC-20260916-01",
-      type: "HELD" as const,
-      title: "Ký quỹ ca SOS #shift_sos_01",
-      detail: "The Cuppa • Pha chế khẩn cấp 4h",
+      type: isSosReleased ? ("RELEASED" as const) : ("HELD" as const),
+      title: isSosReleased ? "Giải ngân ca SOS #shift_sos_01" : "Ký quỹ ca SOS #shift_sos_01",
+      detail: isSosReleased
+        ? "Đã xác nhận hoàn thành • Tự động giải ngân VietQR Escrow"
+        : "The Cuppa • Pha chế khẩn cấp 4h",
       counterparty: "Nguyễn Đức Huy (TNUT)",
       amount: -153000,
       date: "16/09/2026 17:30",
-      statusBadge: "Đang giữ Escrow",
-      statusColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+      statusBadge: isSosReleased ? "Đã giải ngân VietQR (Hoàn tất)" : "Đang giữ Escrow",
+      statusColor: isSosReleased
+        ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+        : "text-amber-400 bg-amber-500/10 border-amber-500/20",
     },
     {
       id: "tx_02",
@@ -177,7 +218,7 @@ export function EmployerDashboard({
   };
 
   const handleCopyPin = () => {
-    navigator.clipboard.writeText("8866");
+    navigator.clipboard.writeText(venuePin);
     setCopiedPin(true);
     setTimeout(() => setCopiedPin(false), 2000);
   };
@@ -476,10 +517,10 @@ export function EmployerDashboard({
 
             <div className="flex items-baseline gap-3">
               <span className="text-2xl font-mono font-bold tracking-widest text-purple-400">
-                8866
+                {venuePin}
               </span>
               <span className="text-[11px] text-slate-400">
-                Cung cấp mã PIN nếu GPS điện thoại ứng viên chập chờn.
+                Mã PIN đối soát thời gian thực tại quầy thu ngân.
               </span>
             </div>
           </div>
@@ -555,15 +596,23 @@ export function EmployerDashboard({
             <div className="bg-slate-900/90 border border-amber-500/20 p-2.5 rounded-lg">
               <span className="text-[10px] text-slate-400 block">Đang giữ hộ an toàn</span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-sm font-bold font-mono text-amber-400">153.000 đ</span>
-                <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
+                <span className="text-sm font-bold font-mono text-amber-400">
+                  {isSosReleased ? "0 đ" : "153.000 đ"}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {isSosReleased ? "(0 ca)" : "(1 ca)"}
+                </span>
               </div>
             </div>
             <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-lg">
-              <span className="text-[10px] text-slate-400 block">Đã thanh toán mô phỏng</span>
+              <span className="text-[10px] text-slate-400 block">Đã giải ngân VietQR</span>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-sm font-bold font-mono text-emerald-400">120.000 đ</span>
-                <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
+                <span className="text-sm font-bold font-mono text-emerald-400">
+                  {isSosReleased ? "273.000 đ" : "120.000 đ"}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {isSosReleased ? "(2 ca)" : "(1 ca)"}
+                </span>
               </div>
             </div>
           </div>

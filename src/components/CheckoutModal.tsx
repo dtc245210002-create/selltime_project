@@ -13,7 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Shift } from "../domain/types";
-import { calculateCompletionReward } from "../domain/trust-battery";
+import { calculateCompletionReward, getActiveVenuePin, verifyCheckinPin } from "../domain/trust-battery";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -30,6 +30,8 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("Chủ quán thân thiện, môi trường làm việc rất chuyên nghiệp!");
+  const [checkoutPin, setCheckoutPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
@@ -40,13 +42,26 @@ export function CheckoutModal({
   const totalEarned = baseWage + sosBonus;
   const completionReward = calculateCompletionReward(Boolean(shift.is_sos), rating);
 
-  const handleCheckoutSubmit = () => {
+  const handleCheckoutSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanPin = checkoutPin.trim();
+    if (!cleanPin) {
+      setPinError("Vui lòng nhập mã PIN quầy để hoàn tất ca làm và kích hoạt giải ngân.");
+      return;
+    }
+
+    if (!verifyCheckinPin(cleanPin)) {
+      setPinError(`Mã PIN "${cleanPin}" không khớp với mã quầy hôm nay (${getActiveVenuePin()}). Vui lòng hỏi quản lý thu ngân.`);
+      return;
+    }
+
+    setPinError(null);
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
       setIsDone(true);
       onConfirmCheckout(shift, totalEarned, rating);
-    }, 1500);
+    }, 1200);
   };
 
   return (
@@ -164,21 +179,54 @@ export function CheckoutModal({
                 />
               </div>
 
+              {/* BẮT BUỘC: MÃ PIN QUẦY XÁC NHẬN KHI CHECK-OUT */}
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Mã PIN Quầy Xác Nhận Checkout (4 số):
+                  </label>
+                  <span className="text-[11px] font-mono text-purple-400 font-semibold">
+                    Hôm nay: {getActiveVenuePin()}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={checkoutPin}
+                  onChange={(e) => {
+                    setCheckoutPin(e.target.value);
+                    setPinError(null);
+                  }}
+                  placeholder="Nhập 4 số PIN của quán"
+                  className="w-full text-center text-lg tracking-[0.4em] font-mono font-bold py-2 border border-slate-700 rounded-lg focus:border-emerald-500 focus:outline-none bg-slate-900 text-white"
+                />
+                {pinError && (
+                  <p className="text-xs text-rose-400 font-medium text-center">
+                    {pinError}
+                  </p>
+                )}
+                <p className="text-[11px] text-slate-400 text-center">
+                  Nhân viên hoặc quản lý cơ sở sẽ cung cấp mã PIN này khi bạn bàn giao ca làm việc.
+                </p>
+              </div>
+
               {/* Nút xác nhận giải ngân */}
               <button
-                onClick={handleCheckoutSubmit}
+                type="button"
+                onClick={() => handleCheckoutSubmit()}
                 disabled={isProcessing}
-                className="w-full py-2.5 rounded-md font-semibold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-colors active:scale-98 disabled:opacity-50"
+                className="w-full py-3 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-colors active:scale-98 disabled:opacity-50 shadow-md shadow-emerald-950/40"
               >
                 {isProcessing ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Đang cộng số dư ví DEMO...</span>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang giải ngân Escrow tức thì 3s...</span>
                   </>
                 ) : (
                   <>
                     <Wallet className="w-4 h-4" />
-                    <span>Xác Nhận Checkout DEMO {totalEarned.toLocaleString("vi-VN")} đ</span>
+                    <span>Xác Nhận Checkout & Giải Ngân {totalEarned.toLocaleString("vi-VN")} đ</span>
                   </>
                 )}
               </button>
@@ -191,29 +239,33 @@ export function CheckoutModal({
               </div>
 
               <div>
-                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
-                  🎉 Đã Cộng Số Dư DEMO
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                  🎉 Giải Ngân Escrow Thành Công (2.8s)
                 </span>
-                <h4 className="text-lg font-bold text-white">
+                <h4 className="text-2xl font-black text-white font-mono">
                   +{totalEarned.toLocaleString("vi-VN")} đ
                 </h4>
-                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                  Số tiền mô phỏng đã cộng vào <strong className="text-emerald-400">ví DEMO</strong>; chưa có giao dịch ngân hàng.
+                <p className="text-xs text-slate-300 mt-1 max-w-xs mx-auto">
+                  Số tiền đã tự động trừ từ quỹ ký quỹ tạm giữ và cộng trực tiếp vào <strong className="text-emerald-400">Ví Tiền Sinh Viên</strong>.
                 </p>
               </div>
 
-              <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800 text-left text-xs space-y-1.5">
+              <div className="bg-slate-950 rounded-xl p-3.5 border border-slate-800 text-left text-xs space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Mã ca DEMO:</span>
+                  <span className="text-slate-400">Mã ca làm:</span>
                   <span className="font-mono font-bold text-slate-200">#ST-{shift.id.slice(-6).toUpperCase()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Kênh thanh toán:</span>
-                  <span className="font-medium text-purple-400">Ví local DEMO</span>
+                  <span className="text-slate-400">Kênh giải ngân:</span>
+                  <span className="font-bold text-purple-400">VietQR Escrow Napas 24/7</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Trạng thái mô phỏng:</span>
-                  <span className="font-mono font-medium text-emerald-400">Đã cập nhật ví DEMO</span>
+                  <span className="text-slate-400">Trạng thái quỹ:</span>
+                  <span className="font-mono font-bold text-emerald-400">ĐÃ GIẢI NGÂN (RELEASED)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Pin Uy Tín:</span>
+                  <span className="font-bold text-emerald-400 font-mono">+{completionReward.rewardPoints}% (PartyMode)</span>
                 </div>
               </div>
 

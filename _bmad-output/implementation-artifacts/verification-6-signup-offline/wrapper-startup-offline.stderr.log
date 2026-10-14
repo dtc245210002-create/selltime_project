@@ -1,0 +1,9 @@
+Get-FileHash : The term 'Get-FileHash' is not recognized as the name of a cmdlet, function, script file, or operable 
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\Users\admin\OneDrive\Desktop\selltime_project\_bmad-output\implementation-artifacts\verification-6-signup-offline
+\run-reviewed-diagnostic.ps1:9 char:18
++ $diagnosticHash=(Get-FileHash -LiteralPath $diagnosticSql -Algorithm  ...
++                  ~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Get-FileHash:String) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 

@@ -95,3 +95,65 @@ export function calculateCompletionReward(isSos: boolean = false, rating: number
 export function canAcceptSosShift(trustBattery: number): boolean {
   return trustBattery >= 80;
 }
+
+/**
+ * Mã PIN điểm danh mẫu tại cơ sở (The Cuppa Coffee)
+ */
+export const VENUE_PIN = "8866";
+
+/**
+ * Xác thực mã PIN điểm danh tại cơ sở
+ * Chỉ chấp nhận đúng VENUE_PIN ("8866" sau khi trim), từ chối mọi giá trị khác hoặc rỗng
+ */
+export function verifyCheckinPin(inputPin: string, expectedPin: string = VENUE_PIN): boolean {
+  if (!inputPin) return false;
+  return inputPin.trim() === expectedPin;
+}
+
+/**
+ * Tính số giây trôi qua thực tế của ca làm việc từ thời điểm check-in
+ * @param checkinTimestamp Thời điểm check-in (ms)
+ * @param currentTimestamp Thời điểm hiện tại (ms, mặc định Date.now())
+ */
+export function calculateShiftElapsedTime(
+  checkinTimestamp: number,
+  currentTimestamp: number = Date.now()
+): number {
+  if (!checkinTimestamp || currentTimestamp < checkinTimestamp) return 0;
+  return Math.floor((currentTimestamp - checkinTimestamp) / 1000);
+}
+
+/**
+ * Kiểm tra xem tài khoản có đang trong thời gian bị phạt khóa nhận ca SOS không
+ */
+export function isSosLockedByTime(
+  lockUntilTimestamp: number | null,
+  currentTimestamp: number = Date.now()
+): boolean {
+  if (!lockUntilTimestamp) return false;
+  return currentTimestamp < lockUntilTimestamp;
+}
+
+/**
+ * Đánh giá toàn diện quyền ứng tuyển ca SOS
+ */
+export function canCandidateApplySos(
+  trustBattery: number,
+  lockUntilTimestamp: number | null = null,
+  currentTimestamp: number = Date.now()
+): { canApply: boolean; reason?: string } {
+  if (isSosLockedByTime(lockUntilTimestamp, currentTimestamp)) {
+    const remainingHours = Math.max(1, Math.ceil((lockUntilTimestamp! - currentTimestamp) / (3600 * 1000)));
+    return {
+      canApply: false,
+      reason: `Tài khoản đang bị tạm khóa nhận ca SOS (còn khoảng ${remainingHours} giờ).`,
+    };
+  }
+  if (!canAcceptSosShift(trustBattery)) {
+    return {
+      canApply: false,
+      reason: `Pin Uy Tín của bạn đang là ${trustBattery}%. Cần tối thiểu 80% để nhận ca SOS.`,
+    };
+  }
+  return { canApply: true };
+}

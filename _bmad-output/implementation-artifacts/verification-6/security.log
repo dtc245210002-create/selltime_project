@@ -1,0 +1,14 @@
+PASS: Cấu hình mặc định tắt/thiếu không gọi provider (503)
+PASS: Token thiếu/giả/hết hạn bị từ chối (401)
+PASS: Candidate không đăng ca (403)
+PASS: Origin sai bị từ chối mutation (403)
+PASS: Giả owner 403, INSERT đúng owner, ID trùng 409 không ghi đè
+PASS: Hai session nhận dữ liệu ca riêng theo client RLS của request
+PASS: Hội thoại người khác không đọc/gửi/xóa (404)
+PASS: Sender từ session và giới hạn input
+PASS: Không có reset chat không bảo vệ
+PASS: Đăng ký role Employer/Admin bị từ chối 403
+PASS: Hồ sơ liên kết UUID và role mới từ database
+PASS: Login chỉ trả identity, cookie bảo vệ; refresh/logout có origin guard
+PASS: DEMO persona không tạo session thật; route không fallback/ntfy/cache chung
+Security: 13/13 đạt; provider/database thật: 0 request.

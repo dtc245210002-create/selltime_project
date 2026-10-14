@@ -1,0 +1,60 @@
+diff --git a/_bmad-output/implementation-artifacts/verification-6-shift-validation/auth-test.before.mjs.txt b/src/__tests__/auth-ownership.test.mjs
+index 12be79f..15543c7 100644
+--- a/_bmad-output/implementation-artifacts/verification-6-shift-validation/auth-test.before.mjs.txt
++++ b/src/__tests__/auth-ownership.test.mjs
+@@ -128,6 +128,55 @@ try {
+     const b = await (await shifts.GET(request('/api/shifts', 'GET', 'token-b'))).json();
+     assert.equal(a.data.length, 0); assert.equal(b.data.length, 1);
+   });
++  let validationId = 0;
++  async function validateShift(patch, status) {
++    const count = tables.shifts.length;
++    const shift = { ...validShift, id: `validation-${validationId++}`, ...patch };
++    try {
++      const response = await shifts.POST(request('/api/shifts', 'POST', 'token-b', { shift }));
++      assert.equal(response.status, status, JSON.stringify(patch));
++      assert.equal(tables.shifts.length, count + (status === 201 ? 1 : 0));
++      if (status === 201) {
++        const { data } = await response.json();
++        for (const field of ['shift_start', 'shift_end', 'hourly_wage', 'total_budget', 'sos_bonus_amount']) {
++          assert.equal(data[field], shift[field] ?? (field === 'sos_bonus_amount' ? 0 : undefined), field);
++        }
++      }
++    } finally { tables.shifts.splice(count); }
++  }
++  await check('Giờ sai range/format bị từ chối 400 trước INSERT ở cả start/end', async () => {
++    for (const field of ['shift_start', 'shift_end']) {
++      for (const value of ['24:00', '99:99', '23:60', '00:60', '-1:00', '1:00', '01:0', ' 01:00', '01:00 ', '01:00\n', '01:00:00', '']) {
++        await validateShift({ [field]: value }, 400);
++      }
++    }
++  });
++  await check('Giờ không phải string không bị coercion', async () => {
++    for (const field of ['shift_start', 'shift_end']) {
++      for (const value of [undefined, null, 1800, true, ['18:00'], {}]) await validateShift({ [field]: value }, 400);
++    }
++  });
++  await check('Giờ biên 00:00/23:59 và các đoạn range hợp lệ giữ nguyên', async () => {
++    for (const field of ['shift_start', 'shift_end']) {
++      for (const value of ['00:00', '09:59', '10:00', '19:59', '20:00', '23:59']) await validateShift({ [field]: value }, 201);
++    }
++  });
++  await check('Các trường tiền vượt INT max hoặc sai kiểu/phân số bị từ chối trước INSERT', async () => {
++    for (const field of ['hourly_wage', 'total_budget', 'sos_bonus_amount']) {
++      for (const value of [2147483648, Number.MAX_SAFE_INTEGER, 1.5, -1, '1', null, true, [], {}]) await validateShift({ [field]: value }, 400);
++    }
++  });
++  await check('Wage/budget vẫn dương và bắt buộc; bonus vẫn không âm và optional', async () => {
++    for (const field of ['hourly_wage', 'total_budget']) {
++      for (const value of [0, undefined]) await validateShift({ [field]: value }, 400);
++    }
++    await validateShift({ hourly_wage: 1, total_budget: 1, sos_bonus_amount: 0 }, 201);
++    await validateShift({ sos_bonus_amount: undefined }, 201);
++  });
++  await check('INT max được chấp nhận riêng từng field và đồng thời, không đổi budget formula', async () => {
++    for (const field of ['hourly_wage', 'total_budget', 'sos_bonus_amount']) await validateShift({ [field]: 2147483647 }, 201);
++    await validateShift({ hourly_wage: 2147483647, total_budget: 2147483647, sos_bonus_amount: 2147483647 }, 201);
++  });
+   await check('Hội thoại người khác không đọc/gửi/xóa (404)', async () => {
+     assert.equal((await messages.GET(request('/api/messages?conversation_id=private', 'GET', 'token-a'))).status, 404);
+     assert.equal((await messages.POST(request('/api/messages', 'POST', 'token-a', { conversation_id: 'private', content: 'secret' }))).status, 404);

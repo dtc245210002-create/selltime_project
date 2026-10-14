@@ -1,0 +1,14 @@
+{
+  "offline": true,
+  "case": "stderr",
+  "gate": "PASS",
+  "native_exit": 0,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "edad1103e5234f33b956e6ee05e58c55",
+  "bytes": {
+    "stdout": 22,
+    "stderr": 22
+  }
+}

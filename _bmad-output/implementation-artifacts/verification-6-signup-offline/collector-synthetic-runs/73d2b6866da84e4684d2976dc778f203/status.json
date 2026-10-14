@@ -1,0 +1,14 @@
+{
+  "offline": true,
+  "case": "overflow-err",
+  "gate": "OUTPUT_OVERFLOW",
+  "native_exit": 1,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "73d2b6866da84e4684d2976dc778f203",
+  "bytes": {
+    "stdout": 0,
+    "stderr": 8192
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "offline": true,
+  "case": "dual-pressure",
+  "gate": "OUTPUT_OVERFLOW",
+  "native_exit": 1,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "7139880ac23d46c49073ea5514e244b9",
+  "pump_threads_stopped": true,
+  "bytes": {
+    "stdout": 8192,
+    "stderr": 0
+  },
+  "native_exit_saved": true
+}

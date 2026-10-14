@@ -39,7 +39,7 @@ export function LoginRequiredCard({
       {features.length > 0 && (
         <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-left space-y-2">
           <span className="text-[11px] font-semibold text-slate-300 block">
-            Quyền lợi sau khi đăng nhập:
+            Các tính năng mô phỏng trong DEMO:
           </span>
           <div className="space-y-1.5">
             {features.map((feat, idx) => (
@@ -59,10 +59,10 @@ export function LoginRequiredCard({
           className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-md shadow-purple-900/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
         >
           <LogIn className="w-4 h-4" />
-          <span>Đăng Nhập / Đăng Ký Ngay</span>
+          <span>Mở Candidate / Employer DEMO</span>
         </button>
         <p className="text-[11px] text-slate-500">
-          Chỉ mất 10 giây • Hỗ trợ đăng nhập nhanh tài khoản mẫu
+          LIVE chưa được bật • Không cần mật khẩu • Không xác thực eKYC
         </p>
       </div>
     </div>

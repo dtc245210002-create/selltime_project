@@ -4,7 +4,7 @@
 // S = 0.35*S_Time + 0.25*S_Loc + 0.25*S_Skill + 0.15*S_Salary
 // ==========================================================
 
-import {
+import type {
   CandidateFilterCriteria,
   CandidateProfile,
   GeoPoint,

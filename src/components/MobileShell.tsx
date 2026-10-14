@@ -53,6 +53,14 @@ export function MobileShell({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-900 selection:text-purple-200 pb-16 md:pb-0">
+      {/* BANNER THƯỜNG TRỰC CHẾ ĐỘ THỬ NGHIỆM */}
+      <aside aria-label="Thông báo chế độ thử nghiệm" className="bg-amber-950/90 border-b border-amber-800/80 px-3 py-1.5 text-center text-xs text-amber-200 flex items-center justify-center gap-2 shrink-0 z-50">
+        <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+        <span className="font-medium text-[11px] sm:text-xs">
+          DEMO: danh tính và vai trò mẫu, ví/thanh toán và điểm danh mô phỏng. Chuyển vai trò không cấp quyền thật. LIVE chưa được bật.
+        </span>
+      </aside>
+
       {/* ========================================================= */}
       {/* TOP HEADER: Clean Responsive Navbar                       */}
       {/* ========================================================= */}
@@ -166,7 +174,7 @@ export function MobileShell({
                       {currentUser.full_name}
                     </span>
                     <span className="text-[10px] text-slate-400 font-medium">
-                      {currentUser.role === "CANDIDATE" ? "Sinh viên TNUT" : "Chủ quán"}
+                      {currentUser.role === "CANDIDATE" ? "Candidate DEMO" : "Employer DEMO"}
                     </span>
                   </div>
                 </div>
@@ -174,7 +182,7 @@ export function MobileShell({
                 <button
                   onClick={onLogout}
                   className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                  title="Đăng xuất"
+                  title="Thoát persona DEMO"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -185,7 +193,7 @@ export function MobileShell({
                 className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Đăng Nhập</span>
+                <span>Mở DEMO</span>
               </button>
             )}
           </div>

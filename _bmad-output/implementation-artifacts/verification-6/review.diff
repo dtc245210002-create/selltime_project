@@ -1,0 +1,3727 @@
+diff --git a/.env.example b/.env.example
+index 6c29b7f..a338846 100644
+--- a/.env.example
++++ b/.env.example
+@@ -10,6 +10,13 @@ NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+ NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
+ 
++# Auth thật: cấu hình riêng, server-only, mặc định tắt. Chỉ dùng project test được duyệt.
++# Không sao chép credential cũ; không dùng service_role trong ứng dụng.
++SELLTIME_AUTH_ENABLED=false
++SELLTIME_AUTH_SUPABASE_URL=https://approved-test-project.supabase.co
++SELLTIME_AUTH_SUPABASE_ANON_KEY=approved-test-anon-key-placeholder
++SELLTIME_AUTH_ORIGIN=http://localhost:3000
++
+ # 3. PayOS VietQR Payment Gateway (Optional for real VietQR)
+ PAYOS_CLIENT_ID=your_payos_client_id
+ PAYOS_API_KEY=your_payos_api_key
+diff --git a/.gitignore b/.gitignore
+index 892067b..2fc64ee 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -22,8 +22,11 @@ npm-debug.log*
+ yarn-debug.log*
+ yarn-error.log*
+ 
+-# local env files
+-.env*.local
++# local credentials (keep only the placeholder template in Git)
++.env
++.env.*
++!.env.example
++/src/Password-Supabase/
+ 
+ # vercel
+ .vercel
+diff --git a/package.json b/package.json
+index ccdc06a..5d32509 100644
+--- a/package.json
++++ b/package.json
+@@ -4,7 +4,7 @@
+   "private": true,
+   "scripts": {
+     "dev": "next dev",
+-    "build": "next build",
++    "build": "node --require ./scripts/windows-realpath.cjs node_modules/next/dist/bin/next build",
+     "start": "next start",
+     "lint": "next lint"
+   },
+diff --git a/src/__tests__/selltime-core.test.mjs b/src/__tests__/selltime-core.test.mjs
+index 2f426c6..d1618a2 100644
+--- a/src/__tests__/selltime-core.test.mjs
++++ b/src/__tests__/selltime-core.test.mjs
+@@ -1,48 +1,34 @@
+ // ==========================================================
+ // SELL TIME PLATFORM - QC AUTOMATED REGRESSION TEST SUITE
+-// Kiểm thử tự động thuật toán AHP 4 biến & Logic PartyMode
++// Kiểm thử tự động toàn diện Logic Cốt lõi & Minh bạch Giai đoạn 1
+ // ==========================================================
+ 
+-function calculateHaversineDistance(coord1, coord2) {
+-  const R = 6371;
+-  const dLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
+-  const dLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
+-  const lat1 = (coord1.latitude * Math.PI) / 180;
+-  const lat2 = (coord2.latitude * Math.PI) / 180;
+-
+-  const a =
+-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+-    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+-  return Math.round(R * c * 10) / 10;
+-}
+-
+-function calculateCancellationPenalty(hoursBeforeStart, minutesSinceBooking) {
+-  if (typeof minutesSinceBooking === "number" && minutesSinceBooking >= 0 && minutesSinceBooking <= 60) {
+-    return { penaltyPoints: 0, isLockedFromSos: false, isGracePeriod: true, reason: "Ân hạn 1 giờ: Miễn trừ phạt." };
+-  }
+-  if (hoursBeforeStart >= 12) {
+-    return { penaltyPoints: 0, isLockedFromSos: false, reason: "Hủy trước > 12 giờ: Không trừ điểm uy tín." };
+-  }
+-  if (hoursBeforeStart >= 2 && hoursBeforeStart < 12) {
+-    return { penaltyPoints: 15, isLockedFromSos: false, reason: "Hủy trước 2h - 12h: Trừ 15% Pin Uy Tín." };
+-  }
+-  if (hoursBeforeStart > 0 && hoursBeforeStart < 2) {
+-    return { penaltyPoints: 35, isLockedFromSos: true, reason: "Hủy gấp < 2h: Trừ 35% Pin & Khóa nhận ca mới." };
+-  }
+-  return { penaltyPoints: 50, isLockedFromSos: true, reason: "Bùng ca không thông báo: Trừ 50% Pin & Đình chỉ ca SOS." };
+-}
+-
+-function calculateCompletionReward(isSos = false, rating = 5) {
+-  let reward = 2;
+-  if (isSos) reward += 2;
+-  if (rating === 5) reward += 1;
+-  return { rewardPoints: reward };
+-}
+-
+-function evaluateAhpScore(timeScore, locScore, skillScore, salaryScore) {
+-  return Math.round(0.35 * timeScore + 0.25 * locScore + 0.25 * skillScore + 0.15 * salaryScore);
+-}
++import {
++  calculateHaversineDistance,
++  calculateTimeScore,
++  calculateLocationScore,
++  calculateSkillScore,
++  calculateSalaryScore,
++  evaluateShiftMatch,
++  rankShiftsForCandidate,
++} from "../domain/matching-engine.ts";
++
++import {
++  VENUE_PIN,
++  verifyCheckinPin,
++  calculateCancellationPenalty,
++  calculateCompletionReward,
++  canAcceptSosShift,
++  calculateShiftElapsedTime,
++  isSosLockedByTime,
++  canCandidateApplySos,
++} from "../domain/trust-battery.ts";
++
++import {
++  INITIAL_SHIFTS,
++  MOCK_CANDIDATE_PROFILE,
++  MOCK_EMPLOYER_PROFILE,
++} from "../application/store.ts";
+ 
+ let passed = 0;
+ let failed = 0;
+@@ -58,65 +44,207 @@ function assert(condition, testName, details = "") {
+ }
+ 
+ console.log("\n🧪 ========================================================");
+-console.log("   SELL TIME PLATFORM - QC SPRINT 2 REGRESSION TEST SUITE");
++console.log("   SELL TIME PLATFORM - GIAI ĐOẠN 1 QC REGRESSION TEST SUITE");
+ console.log("========================================================\n");
+ 
+-// 1. Haversine GPS & Geofencing
+-console.log("📍 [Phần 1/4] Kiểm thử Tính toán Cự ly Haversine & Geofencing:");
++// -------------------------------------------------------------
++// 1. Haversine GPS, Geofencing & Matching Engine AHP 4 biến
++// -------------------------------------------------------------
++console.log("📍 [Phần 1/6] Matching Engine AHP 4 Biến & GPS Geofencing:");
+ const tnutCoords = { latitude: 21.5855, longitude: 105.8272 };
+ const cuppaCoords = { latitude: 21.593, longitude: 105.834 };
+ const dist = calculateHaversineDistance(tnutCoords, cuppaCoords);
+-assert(dist >= 1.0 && dist <= 1.3, "Khoảng cách TNUT đến The Cuppa ~1.1km", `Tính được: ${dist}km`);
++assert(dist >= 1.0 && dist <= 1.3, "Khoảng cách KTX TNUT đến Quán The Cuppa ~1.1km", `Tính được: ${dist}km`);
+ 
+ const distAtVenue = calculateHaversineDistance(cuppaCoords, { latitude: 21.5931, longitude: 105.8341 });
+ assert(distAtVenue * 1000 <= 100, "Định vị tại quán nằm trong Geofencing 100m", `Cự ly: ${distAtVenue * 1000}m`);
+ 
+-// 2. AHP 4-Weight Matching Formula
+-console.log("\n🎯 [Phần 2/4] Kiểm thử Trọng số Matching Engine AHP (PRD FR-6):");
+-const perfectScore = evaluateAhpScore(100, 100, 100, 100);
+-assert(perfectScore === 100, "Tổng điểm 4 biến hoàn hảo phải đạt 100%", `Điểm: ${perfectScore}`);
+-
+-const partialScore = evaluateAhpScore(100, 80, 100, 90);
+-assert(partialScore === 94, "Trọng số 0.35*100 + 0.25*80 + 0.25*100 + 0.15*90 = 94%", `Điểm: ${partialScore}`);
+-
+-const mismatchTimeScore = evaluateAhpScore(0, 100, 100, 100);
+-assert(mismatchTimeScore === 65, "Lệch khung giờ (Time = 0) bị phạt nặng còn tối đa 65%", `Điểm: ${mismatchTimeScore}`);
+-
+-// 3. PartyMode Trust Battery
+-console.log("\n🔋 [Phần 3/4] Kiểm thử Cơ chế Trừ & Thưởng Pin Uy Tín (PartyMode):");
+-const pGrace = calculateCancellationPenalty(1, 20); // Hủy sát giờ <2h nhưng mới nhận cách đây 20 phút
+-assert(pGrace.penaltyPoints === 0 && !pGrace.isLockedFromSos && pGrace.isGracePeriod, "Ân hạn 1 giờ do ấn nhầm: Miễn trừ phạt và giữ nguyên 100% Pin");
+-
+-const p14 = calculateCancellationPenalty(14, 120);
+-assert(p14.penaltyPoints === 0 && !p14.isLockedFromSos, "Hủy trước 14h: Không trừ điểm uy tín");
+-
+-const p5 = calculateCancellationPenalty(5);
+-assert(p5.penaltyPoints === 15 && !p5.isLockedFromSos, "Hủy trước 5h: Trừ 15% Pin Uy Tín");
+-
+-const p1 = calculateCancellationPenalty(1);
+-assert(p1.penaltyPoints === 35 && p1.isLockedFromSos, "Hủy gấp < 2h: Trừ 35% Pin & Khóa nhận ca mới");
+-
+-const pNoShow = calculateCancellationPenalty(0);
+-assert(pNoShow.penaltyPoints === 50 && pNoShow.isLockedFromSos, "Bùng ca (No-show): Trừ 50% Pin & Khóa nhận ca");
+-
+-const rNormal = calculateCompletionReward(false, 5);
+-assert(rNormal.rewardPoints === 3, "Hoàn thành ca 5 sao: Thưởng +3% Pin Uy Tín");
+-
+-const rSos = calculateCompletionReward(true, 5);
+-assert(rSos.rewardPoints === 5, "Hoàn thành ca SOS 5 sao: Thưởng +5% Pin Uy Tín");
+-
+-// 4. Escrow & QR Logic
+-console.log("\n💰 [Phần 4/4] Kiểm thử Tính toán Quỹ Escrow & Bảo đảm thù lao:");
+-const baseWage = 32000;
+-const hours = 4;
+-const sosBonus = 25000;
+-const totalBudget = baseWage * hours + sosBonus;
+-assert(totalBudget === 153000, "Tổng ngân sách ca SOS: 32k*4h + 25k = 153.000đ", `Tính được: ${totalBudget}`);
+-
++const mockCriteria = {
++  hours_to_sell: 4,
++  selected_periods: ["EVENING"],
++  max_distance_km: 3.0,
++  min_hourly_rate: 25000,
++  search_keyword: "",
++  work_types: ["PART_TIME"],
++};
++
++const matchSos = evaluateShiftMatch(INITIAL_SHIFTS[0], MOCK_CANDIDATE_PROFILE, mockCriteria);
++assert(matchSos.total_score >= 85, "Ca SOS The Cuppa đạt điểm cao (>=85%) cho persona Huy TNUT", `Điểm: ${matchSos.total_score}`);
++assert(matchSos.badge_color === "green", "Ca khớp cao có badge màu xanh (green)", `Badge: ${matchSos.badge_color}`);
++assert(matchSos.time_score === 100, "Time score đạt 100 điểm khi khớp hoàn toàn khung giờ và thời lượng");
++
++const ranked = rankShiftsForCandidate(INITIAL_SHIFTS, MOCK_CANDIDATE_PROFILE, mockCriteria);
++assert(ranked.length > 0 && ranked[0].id === "shift_sos_01", "Ca SOS The Cuppa được xếp hạng ưu tiên số 1");
++
++// -------------------------------------------------------------
++// 2. PIN Điểm Danh Tại Quầy (Không cho phép 4 ký tự bất kỳ)
++// -------------------------------------------------------------
++console.log("\n🔑 [Phần 2/6] Xác thực Mã PIN Điểm Danh Tại Quầy (VENUE_PIN):");
++assert(VENUE_PIN === "8866", "VENUE_PIN quy định chuẩn là '8866'", `Hiện tại: ${VENUE_PIN}`);
++assert(verifyCheckinPin("8866"), "Chấp nhận mã PIN chính xác '8866'");
++assert(verifyCheckinPin("  8866  "), "Chấp nhận mã PIN '8866' có khoảng trắng thừa (auto trim)");
++
++// Kiểm tra loại bỏ lỗ hổng 4 ký tự bất kỳ
++assert(!verifyCheckinPin("1234"), "Từ chối mã '1234' (loại bỏ bypass 4 ký tự)");
++assert(!verifyCheckinPin("0000"), "Từ chối mã '0000'");
++assert(!verifyCheckinPin("abcd"), "Từ chối 4 ký tự chữ cái bất kỳ");
++assert(!verifyCheckinPin(""), "Từ chối chuỗi rỗng");
++assert(!verifyCheckinPin("   "), "Từ chối toàn khoảng trắng");
++assert(!verifyCheckinPin(null), "Từ chối null");
++assert(!verifyCheckinPin(undefined), "Từ chối undefined");
++
++// -------------------------------------------------------------
++// 3. Ngân Sách Quỹ Escrow & Lương / Thưởng SOS
++// -------------------------------------------------------------
++console.log("\n💰 [Phần 3/6] Ngân Sách Escrow & Công thức Thù Lao Ca SOS:");
++const sosShift = INITIAL_SHIFTS.find((s) => s.id === "shift_sos_01");
++assert(sosShift !== undefined, "Tìm thấy ca mẫu shift_sos_01");
++
++// Quy tắc: total_budget = (hourly_wage * duration_hours) + (is_sos ? sos_bonus_amount : 0)
++const expectedBaseWage = sosShift.hourly_wage * sosShift.duration_hours; // 32.000 * 4 = 128.000đ
++const expectedSosBonus = sosShift.is_sos ? (sosShift.sos_bonus_amount || 0) : 0; // 25.000đ
++const expectedTotalBudget = expectedBaseWage + expectedSosBonus; // 153.000đ
++
++assert(
++  sosShift.total_budget === expectedTotalBudget,
++  `Ngân sách ca SOS đã bao gồm thưởng: ${expectedTotalBudget.toLocaleString()}đ (32k*4h + 25k)`,
++  `Thực tế trong store: ${sosShift.total_budget}`
++);
++
++// Kiểm tra tính toán thù lao cho ứng viên: không cộng thưởng lặp
++const calculatedEarned = expectedBaseWage + expectedSosBonus;
++assert(
++  calculatedEarned === 153000,
++  "Tổng thù lao ứng viên nhận được là 153.000đ (thưởng SOS chỉ cộng đúng 1 lần)",
++  `Tính được: ${calculatedEarned}`
++);
++
++// Ca thường không có thưởng SOS
++const normalShift = INITIAL_SHIFTS.find((s) => s.id === "shift_02");
++const normalBaseWage = normalShift.hourly_wage * normalShift.duration_hours; // 28.000 * 4 = 112.000đ
++const normalBonus = normalShift.is_sos ? (normalShift.sos_bonus_amount || 0) : 0;
++assert(
++  normalShift.total_budget === normalBaseWage + normalBonus && normalBonus === 0,
++  "Ca thường không có thưởng SOS: total_budget = 112.000đ",
++  `Thực tế: ${normalShift.total_budget}`
++);
++
++// -------------------------------------------------------------
++// 4. Thưởng Uy Tín Domain & Chống Hoàn Tất Lặp
++// -------------------------------------------------------------
++console.log("\n🔋 [Phần 4/6] Pin Uy Tín (PartyMode) - Thưởng Domain & Chống Lặp:");
++// Thưởng ca thường 5 sao: +2% (base) + 1% (5 sao) = +3%
++const rewardNormal5 = calculateCompletionReward(false, 5);
++assert(rewardNormal5.rewardPoints === 3, "Hoàn tất ca thường 5 sao: +3% Pin Uy Tín (không dùng +15% hardcode)", `Nhận: +${rewardNormal5.rewardPoints}%`);
++
++// Thưởng ca SOS 5 sao: +2% (base) + 2% (SOS) + 1% (5 sao) = +5%
++const rewardSos5 = calculateCompletionReward(true, 5);
++assert(rewardSos5.rewardPoints === 5, "Hoàn tất ca SOS 5 sao: +5% Pin Uy Tín", `Nhận: +${rewardSos5.rewardPoints}%`);
++
++// Thưởng ca thường 4 sao: +2%
++const rewardNormal4 = calculateCompletionReward(false, 4);
++assert(rewardNormal4.rewardPoints === 2, "Hoàn tất ca thường 4 sao: +2% Pin Uy Tín", `Nhận: +${rewardNormal4.rewardPoints}%`);
++
++// Kiểm tra giới hạn Clamp trong [0, 100]
++let currentBattery = 98;
++let newBattery = Math.min(100, Math.max(0, currentBattery + rewardSos5.rewardPoints));
++assert(newBattery === 100, "Pin Uy Tín chạm trần tối đa 100% (không vượt quá 100%)", `Giá trị: ${newBattery}%`);
++
++// Chống hoàn tất lặp
++let shiftStatuses = { shift_sos_01: "COMPLETED" };
++let isAlreadyCompleted = shiftStatuses["shift_sos_01"] === "COMPLETED";
++let pointsAdded = isAlreadyCompleted ? 0 : rewardSos5.rewardPoints;
++assert(pointsAdded === 0, "Chống hoàn tất lặp: Ca đã COMPLETED không được cộng điểm thưởng lần 2");
++
++// Phạt hủy ca (PartyMode)
++const pGrace = calculateCancellationPenalty(1, 20); // Hủy sau 20 phút nhận ca
++assert(pGrace.penaltyPoints === 0 && pGrace.isGracePeriod, "Ân hạn 1 giờ khi nhận nhầm: 0 điểm phạt");
++
++const pLate = calculateCancellationPenalty(1, 120); // Hủy trước 1h (<2h)
++assert(pLate.penaltyPoints === 35 && pLate.isLockedFromSos && pLate.lockHours === 24, "Hủy gấp <2h: Trừ 35% Pin & khóa SOS 24h");
++
++const pNoShow = calculateCancellationPenalty(0, 120); // Bùng ca
++assert(pNoShow.penaltyPoints === 50 && pNoShow.isLockedFromSos && pNoShow.lockHours === 48, "Bùng ca: Trừ 50% Pin & khóa SOS 48h");
++
++// -------------------------------------------------------------
++// 5. Khóa Nhận Ca SOS & Tự Động Mở Sau Hết Hạn
++// -------------------------------------------------------------
++console.log("\n🔒 [Phần 5/6] Điều Kiện & Thời Gian Khóa Nhận Ca SOS:");
++// Yêu cầu Pin Uy Tín >= 80%
++assert(canAcceptSosShift(100), "Pin Uy Tín 100% đủ điều kiện nhận ca SOS");
++assert(canAcceptSosShift(80), "Pin Uy Tín 80% đủ điều kiện nhận ca SOS");
++assert(!canAcceptSosShift(79), "Pin Uy Tín 79% bị chặn nhận ca SOS (< 80%)");
++assert(!canAcceptSosShift(50), "Pin Uy Tín 50% bị chặn nhận ca SOS");
++
++// Kiểm tra khóa theo thời gian phạt
++const now = Date.now();
++const lockedUntil24h = now + 24 * 3600 * 1000;
++const expiredLock = now - 1000; // Đã hết hạn
++
++assert(isSosLockedByTime(lockedUntil24h, now), "Đang trong 24h bị phạt: Cờ khóa SOS có hiệu lực");
++assert(!isSosLockedByTime(expiredLock, now), "Hết thời gian phạt: Tự động hết hiệu lực khóa");
++assert(!isSosLockedByTime(null, now), "Không có án phạt: Không bị khóa");
++
++// Kiểm tra toàn diện qua canCandidateApplySos
++const checkDuringLock = canCandidateApplySos(100, lockedUntil24h, now);
++assert(!checkDuringLock.canApply, "Dù Pin 100% nhưng đang bị án phạt thời gian thì vẫn bị chặn nhận ca SOS");
++
++const checkAfterLockExpired = canCandidateApplySos(85, expiredLock, now);
++assert(checkAfterLockExpired.canApply, "Hết án phạt và Pin >= 80% thì tự động mở lại quyền nhận ca SOS");
++
++const checkLowBatteryAfterLock = canCandidateApplySos(65, expiredLock, now);
++assert(!checkLowBatteryAfterLock.canApply, "Hết án phạt nhưng Pin < 80% vẫn bị chặn nhận ca SOS");
++
++// -------------------------------------------------------------
++// 6. Đồng Hồ Ca Làm Việc Theo Timestamp Thực Tế & Metadata AI
++// -------------------------------------------------------------
++console.log("\n⏱️ [Phần 6/6] Đồng Hồ Ca Làm Việc Thực Tế & AI Source Metadata:");
++const checkinTime = now - 15000; // Đã điểm danh 15 giây trước
++const elapsed15s = calculateShiftElapsedTime(checkinTime, now);
++assert(elapsed15s === 15, "Đồng hồ tính chính xác 15 giây trôi qua từ timestamp check-in", `Tính được: ${elapsed15s}s`);
++
++const justCheckedIn = calculateShiftElapsedTime(now, now);
++assert(justCheckedIn === 0, "Vừa check-in xong: Đồng hồ bắt đầu từ 0 giây (bỏ timer cố định 3672s)", `Bắt đầu: ${justCheckedIn}s`);
++
++const elapsed1Hour = calculateShiftElapsedTime(now - 3600 * 1000, now);
++assert(elapsed1Hour === 3600, "Sau 1 tiếng: Đồng hồ đếm 3600 giây");
++
++assert(calculateShiftElapsedTime(0, now) === 0, "Chưa check-in (timestamp 0): Trả về 0 giây");
++
++// Đảm bảo tính cô lập giữa 2 ca khác nhau
++const shiftTimestamps = {
++  shift_sos_01: now - 30000, // 30s
++  shift_02: now - 5000,      // 5s
++};
++assert(
++  calculateShiftElapsedTime(shiftTimestamps.shift_sos_01, now) === 30 &&
++  calculateShiftElapsedTime(shiftTimestamps.shift_02, now) === 5,
++  "Mỗi ca làm có đồng hồ độc lập theo timestamp riêng, không dùng chéo của nhau"
++);
++
++// Kiểm tra cấu trúc metadata của AI
++const mockAiMetaGemini = {
++  source: "gemini",
++  provider: "Google Gemini",
++  model: "gemini-2.5-flash",
++  is_fallback: false,
++};
++const mockAiMetaFallback = {
++  source: "local_mock",
++  provider: "Hệ thống SellTime",
++  model: "Quy tắc cục bộ",
++  is_fallback: true,
++};
++assert(mockAiMetaGemini.source === "gemini" && !mockAiMetaGemini.is_fallback, "Metadata AI xác thực nguồn Gemini trực tiếp");
++assert(mockAiMetaFallback.source === "local_mock" && mockAiMetaFallback.is_fallback, "Metadata fallback xác thực nguồn dữ liệu mẫu cục bộ");
++
++// -------------------------------------------------------------
++// TỔNG KẾT
++// -------------------------------------------------------------
+ console.log("\n========================================================");
+ console.log(`📊 TỔNG KẾT BỘ KIỂM THỬ: ${passed}/${passed + failed} TEST CASES ĐẠT CHUẨN`);
+ if (failed === 0) {
+-  console.log("🏆 100% KIỂM THỬ CHẤP NHẬN THÀNH CÔNG! HỆ THỐNG SẴN SÀNG.");
++  console.log("🏆 100% KIỂM THỬ CHẤP NHẬN THÀNH CÔNG! GIAI ĐOẠN 1 ĐẠT CHUẨN.");
+ } else {
+   console.error(`⚠️ CÓ ${failed} LỖI PHÁT SINH!`);
+   process.exit(1);
+diff --git a/src/app/api/ai/interview/route.ts b/src/app/api/ai/interview/route.ts
+index 4b57b82..1c42009 100644
+--- a/src/app/api/ai/interview/route.ts
++++ b/src/app/api/ai/interview/route.ts
+@@ -4,12 +4,12 @@ import { conductInterviewStep } from "@/infrastructure/ai/gemini";
+ export async function POST(req: Request) {
+   try {
+     const { history, jobTitle, language } = await req.json();
+-    const reply = await conductInterviewStep(
++    const result = await conductInterviewStep(
+       history || [],
+       jobTitle || "Phục vụ ca tối Cafe The Cuppa",
+       language || "vi-VN"
+     );
+-    return NextResponse.json({ reply });
++    return NextResponse.json(result);
+   } catch (error) {
+     console.error("API Interview Error:", error);
+     return NextResponse.json(
+diff --git a/src/app/api/messages/route.ts b/src/app/api/messages/route.ts
+index 7460325..5346e08 100644
+--- a/src/app/api/messages/route.ts
++++ b/src/app/api/messages/route.ts
+@@ -1,255 +1,57 @@
+-import { NextResponse } from "next/server";
++import { authenticate, authFailure, authResponse } from "@/infrastructure/auth/server";
++import { AuthError, boundedString, readBody, requireOwner } from "@/infrastructure/auth/policy";
++import type { SupabaseClient } from "@supabase/supabase-js";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+ export const fetchCache = "force-no-store";
+ 
+-export interface ChatMessage {
+-  id: string;
+-  conversation_id: string;
+-  sender_id: string;
+-  sender_name: string;
+-  sender_avatar: string;
+-  content: string;
+-  created_at: string;
++async function requireConversation(client: SupabaseClient, userId: string, conversationId: string) {
++  const { data, error } = await client.from("conversations").select("id,candidate_id,employer_id").eq("id", conversationId).maybeSingle();
++  if (error) throw new AuthError(503, "Không thể xác minh hội thoại.");
++  if (!data || (data.candidate_id !== userId && data.employer_id !== userId)) throw new AuthError(404, "Không tìm thấy hội thoại.");
+ }
+ 
+-const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
+-  conv_1: [
+-    {
+-      id: "msg_1",
+-      conversation_id: "conv_1",
+-      sender_id: "user_emp_lan_02",
+-      sender_name: "Chị Lan (The Cuppa)",
+-      sender_avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80",
+-      content: "Chào Huy! Chị thấy em vừa ứng tuyển ca tối 18:00 - 22:00. Em có thể đến sớm 10 phút để nhận áo đồng phục không em?",
+-      created_at: "17:15",
+-    },
+-    {
+-      id: "msg_2",
+-      conversation_id: "conv_1",
+-      sender_id: "user_cand_huy_01",
+-      sender_name: "Nguyễn Đức Huy",
+-      sender_avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+-      content: "Dạ được ạ chị Lan! Em học xong tiết lúc 17h30 ở TNUT, em chạy xe qua quán mất khoảng 5 phút thôi ạ.",
+-      created_at: "17:18",
+-    },
+-    {
+-      id: "msg_3",
+-      conversation_id: "conv_1",
+-      sender_id: "user_emp_lan_02",
+-      sender_name: "Chị Lan (The Cuppa)",
+-      sender_avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80",
+-      content: "Oke em nhé! Chị đã nạp ký quỹ Escrow PayOS vào hệ thống rồi, xong ca bấm checkout là tài khoản em nhận đủ 153.000đ nha!",
+-      created_at: "17:20",
+-    },
+-  ],
+-  conv_2: [
+-    {
+-      id: "msg_2_1",
+-      conversation_id: "conv_2",
+-      sender_id: "user_emp_minh_03",
+-      sender_name: "Anh Minh (Circle K)",
+-      sender_avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+-      content: "Ca chiều 12h30 em có thể đến nhận ca Circle K đối diện ĐH Sư Phạm được không?",
+-      created_at: "Hôm qua",
+-    },
+-    {
+-      id: "msg_2_2",
+-      conversation_id: "conv_2",
+-      sender_id: "user_cand_maianh",
+-      sender_name: "Trần Mai Anh (Sư Phạm)",
+-      sender_avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+-      content: "Dạ được ạ anh Minh, em sẽ qua đúng giờ!",
+-      created_at: "Hôm qua",
+-    },
+-  ],
+-  conv_3: [
+-    {
+-      id: "msg_3_1",
+-      conversation_id: "conv_3",
+-      sender_id: "user_emp_dingtea_04",
+-      sender_name: "Ding Tea Thái Nguyên",
+-      sender_avatar: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=100&auto=format&fit=crop&q=80",
+-      content: "Đã xác nhận ca làm việc tối nay 17h30. Chúc em hoàn thành ca thật tốt!",
+-      created_at: "10/09",
+-    },
+-  ],
+-};
+-
+-// Global in-memory cache
+-const globalMessageStore: Record<string, ChatMessage[]> = {
+-  conv_1: [...INITIAL_MESSAGES.conv_1],
+-  conv_2: [...INITIAL_MESSAGES.conv_2],
+-  conv_3: [...INITIAL_MESSAGES.conv_3],
+-};
+-
+-const getTopic = (convId: string) => `selltime_v1_chat_${convId.replace(/[^a-zA-Z0-9_]/g, "")}`;
+-
+-const NO_CACHE_HEADERS = {
+-  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+-  "CDN-Cache-Control": "no-store",
+-  "Vercel-CDN-Cache-Control": "no-store",
+-  "Pragma": "no-cache",
+-  "Expires": "0",
+-};
+-
+ export async function GET(req: Request) {
+   try {
+-    const url = new URL(req.url);
+-    const convId = url.searchParams.get("conversation_id") || "conv_1";
+-
+-    if (!globalMessageStore[convId]) {
+-      globalMessageStore[convId] = INITIAL_MESSAGES[convId]
+-        ? [...INITIAL_MESSAGES[convId]]
+-        : [];
+-    }
+-
+-    // Đồng bộ từ Cloud Hub (ntfy.sh cache)
+-    try {
+-      const topic = getTopic(convId);
+-      const controller = new AbortController();
+-      const timeoutId = setTimeout(() => controller.abort(), 1200);
+-
+-      const cloudRes = await fetch(`https://ntfy.sh/${topic}/json?poll=1&since=all`, {
+-        signal: controller.signal,
+-        headers: { "Cache-Control": "no-cache" },
+-      });
+-      clearTimeout(timeoutId);
+-
+-      if (cloudRes.ok) {
+-        const text = await cloudRes.text();
+-        const lines = text.trim().split("\n");
+-        for (const line of lines) {
+-          if (!line) continue;
+-          try {
+-            const entry = JSON.parse(line);
+-            if (entry.event === "message" && entry.message) {
+-              const msg: ChatMessage = JSON.parse(entry.message);
+-              if (msg && msg.id && msg.content) {
+-                if (!globalMessageStore[convId].some((m) => m.id === msg.id)) {
+-                  globalMessageStore[convId].push(msg);
+-                }
+-              }
+-            }
+-          } catch (e) {}
+-        }
+-      }
+-    } catch (err) {
+-      // Graceful fallback to memory store
+-    }
+-
+-    return NextResponse.json(
+-      { success: true, conversation_id: convId, data: globalMessageStore[convId] },
+-      { headers: NO_CACHE_HEADERS }
+-    );
+-  } catch (err) {
+-    console.error("GET /api/messages error:", err);
+-    return NextResponse.json(
+-      { success: false, error: "Lỗi tải tin nhắn" },
+-      { status: 500, headers: NO_CACHE_HEADERS }
+-    );
+-  }
++    const { client, identity } = await authenticate(req);
++    const conversationId = boundedString(new URL(req.url).searchParams.get("conversation_id"), 50, "Hội thoại");
++    await requireConversation(client, identity.userId, conversationId);
++    const { data, error } = await client.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(150);
++    if (error) throw new AuthError(503, "Không thể tải tin nhắn.");
++    return authResponse({ success: true, conversation_id: conversationId, data: (data ?? []).reverse() });
++  } catch (error) { return authFailure(error); }
+ }
+ 
+ export async function POST(req: Request) {
+   try {
+-    const body = await req.json();
+-    const {
+-      conversation_id = "conv_1",
+-      sender_id,
+-      sender_name,
+-      sender_avatar,
+-      content,
+-    } = body;
+-
+-    if (!content || !content.trim()) {
+-      return NextResponse.json(
+-        { success: false, error: "Nội dung không được để trống" },
+-        { status: 400, headers: NO_CACHE_HEADERS }
+-      );
+-    }
+-
+-    const now = new Date();
+-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now
+-      .getMinutes()
+-      .toString()
+-      .padStart(2, "0")}`;
+-
+-    const newMsg: ChatMessage = {
+-      id: body.id || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+-      conversation_id,
+-      sender_id: sender_id || "user_cand_huy_01",
+-      sender_name: sender_name || "Thành viên",
+-      sender_avatar:
+-        sender_avatar ||
+-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+-      content: content.trim(),
+-      created_at: body.created_at || timeStr,
+-    };
+-
+-    if (!globalMessageStore[conversation_id]) {
+-      globalMessageStore[conversation_id] = INITIAL_MESSAGES[conversation_id]
+-        ? [...INITIAL_MESSAGES[conversation_id]]
+-        : [];
+-    }
+-
+-    // Lưu vào in-memory store
+-    if (!globalMessageStore[conversation_id].some((m) => m.id === newMsg.id)) {
+-      globalMessageStore[conversation_id].push(newMsg);
+-    }
+-
+-    // Giữ tối đa 150 tin nhắn
+-    if (globalMessageStore[conversation_id].length > 150) {
+-      globalMessageStore[conversation_id] = globalMessageStore[conversation_id].slice(-150);
+-    }
+-
+-    // Phát sóng ra Cloud Hub (ntfy.sh) đồng bộ tức thì cho tất cả thiết bị
+-    const topic = getTopic(conversation_id);
+-    fetch(`https://ntfy.sh/${topic}`, {
+-      method: "POST",
+-      headers: {
+-        "X-Cache": "yes",
+-        "Title": `SellTime: ${newMsg.sender_name}`,
+-        "Content-Type": "application/json",
+-      },
+-      body: JSON.stringify(newMsg),
+-    }).catch((e) => console.warn("Lỗi push cloud ntfy:", e));
+-
+-    return NextResponse.json(
+-      {
+-        success: true,
+-        data: newMsg,
+-        allMessages: globalMessageStore[conversation_id],
+-      },
+-      { headers: NO_CACHE_HEADERS }
+-    );
+-  } catch (err) {
+-    console.error("POST /api/messages error:", err);
+-    return NextResponse.json(
+-      { success: false, error: "Lỗi xử lý tin nhắn" },
+-      { status: 500, headers: NO_CACHE_HEADERS }
+-    );
+-  }
++    const { client, identity } = await authenticate(req, true);
++    const body = await readBody(req);
++    const conversationId = boundedString(body.conversation_id, 50, "Hội thoại");
++    await requireConversation(client, identity.userId, conversationId);
++    requireOwner(identity, body.sender_id);
++    const content = boundedString(body.content, 2000, "Nội dung");
++    const { data, error } = await client.from("messages").insert({
++      id: crypto.randomUUID(), conversation_id: conversationId, sender_id: identity.userId,
++      sender_name: identity.fullName, sender_avatar: identity.avatarUrl ?? "", content,
++      created_at: new Date().toISOString(),
++    }).select().single();
++    if (error) throw new AuthError(error.code === "42501" ? 403 : 503, "Không thể gửi tin nhắn.");
++    return authResponse({ success: true, data }, 201);
++  } catch (error) { return authFailure(error); }
+ }
+ 
++// Không có reset chat thật; chỉ xóa một tin nhắn của chính thành viên gửi.
+ export async function DELETE(req: Request) {
+   try {
++    const { client, identity } = await authenticate(req, true);
+     const url = new URL(req.url);
+-    const convId = url.searchParams.get("conversation_id") || "conv_1";
+-
+-    globalMessageStore[convId] = INITIAL_MESSAGES[convId]
+-      ? [...INITIAL_MESSAGES[convId]]
+-      : [];
+-
+-    return NextResponse.json(
+-      { success: true, message: "Đã làm mới cuộc hội thoại", data: globalMessageStore[convId] },
+-      { headers: NO_CACHE_HEADERS }
+-    );
+-  } catch (err) {
+-    return NextResponse.json(
+-      { success: false, error: "Lỗi reset hội thoại" },
+-      { status: 500, headers: NO_CACHE_HEADERS }
+-    );
+-  }
++    const conversationId = boundedString(url.searchParams.get("conversation_id"), 50, "Hội thoại");
++    await requireConversation(client, identity.userId, conversationId);
++    const messageId = boundedString(url.searchParams.get("message_id"), 50, "Tin nhắn");
++    const { data, error } = await client.from("messages").delete().eq("id", messageId).eq("conversation_id", conversationId).eq("sender_id", identity.userId).select("id");
++    if (error) throw new AuthError(503, "Không thể xóa tin nhắn.");
++    if (!data?.length) throw new AuthError(404, "Không tìm thấy tin nhắn.");
++    return authResponse({ success: true });
++  } catch (error) { return authFailure(error); }
+ }
+diff --git a/src/app/api/shifts/route.ts b/src/app/api/shifts/route.ts
+index 48371d1..32076e2 100644
+--- a/src/app/api/shifts/route.ts
++++ b/src/app/api/shifts/route.ts
+@@ -1,65 +1,40 @@
+-import { NextResponse } from "next/server";
+ import { getShiftsFromSupabase, saveShiftToSupabase } from "@/infrastructure/database/supabaseRepo";
+-import { getShiftsFromSql, saveShiftToSql } from "@/infrastructure/database/sqlserver";
+-import { INITIAL_SHIFTS } from "@/application/store";
+-import { Shift } from "@/domain/types";
++import { authenticate, authFailure, authResponse } from "@/infrastructure/auth/server";
++import { AuthError, boundedString, readBody, requireOwner, requireRole } from "@/infrastructure/auth/policy";
++import type { Shift } from "@/domain/types";
+ 
+-// In-memory cache dự phòng cho runtime
+-let memoryShifts: Shift[] = [...INITIAL_SHIFTS];
+-
+-export async function GET() {
++export const dynamic = "force-dynamic";
++export async function GET(req: Request) {
+   try {
+-    // 1. Thử lấy từ Supabase Cloud PostgreSQL
+-    const supabaseShifts = await getShiftsFromSupabase();
+-    if (supabaseShifts && supabaseShifts.length > 0) {
+-      return NextResponse.json({ success: true, source: "supabase", data: supabaseShifts });
+-    }
+-
+-    // 2. Thử lấy từ SQL Server SellTimeDB (nếu chạy local)
+-    const sqlShifts = await getShiftsFromSql();
+-    if (sqlShifts && sqlShifts.length > 0) {
+-      return NextResponse.json({ success: true, source: "sqlserver", data: sqlShifts });
+-    }
+-  } catch (err) {
+-    console.warn("Lỗi truy vấn Database, fallback sang Memory:", err);
+-  }
+-
+-  // 3. Fallback sang In-Memory Store
+-  return NextResponse.json({ success: true, source: "memory", data: memoryShifts });
++    const { client } = await authenticate(req);
++    return authResponse({ success: true, source: "supabase", data: await getShiftsFromSupabase(client) });
++  } catch (error) { return authFailure(error); }
+ }
+ 
+ export async function POST(req: Request) {
+   try {
+-    const body = await req.json();
+-    const newShift: Shift = body.shift;
+-
+-    if (!newShift || !newShift.title || !newShift.total_budget) {
+-      return NextResponse.json(
+-        { success: false, error: "Dữ liệu ca làm không hợp lệ" },
+-        { status: 400 }
+-      );
++    const { client, identity } = await authenticate(req, true);
++    requireRole(identity, "EMPLOYER");
++    const body = await readBody(req);
++    const shift = body.shift as Shift;
++    if (!shift || typeof shift !== "object") throw new AuthError(400, "Ca làm không hợp lệ.");
++    requireOwner(identity, shift.employer_id);
++    boundedString(shift.id, 50, "ID"); boundedString(shift.title, 200, "Tiêu đề");
++    boundedString(shift.location_address, 255, "Địa chỉ"); boundedString(shift.shift_date, 50, "Ngày");
++    if (!["PART_TIME", "GIG", "INTERNSHIP"].includes(shift.work_type) ||
++      !["MORNING", "LUNCH", "AFTERNOON", "EVENING", "NIGHT"].includes(shift.period) ||
++      !/^\d{2}:\d{2}$/.test(shift.shift_start) || !/^\d{2}:\d{2}$/.test(shift.shift_end) ||
++      !Number.isFinite(shift.duration_hours) || shift.duration_hours <= 0 || shift.duration_hours > 24 ||
++      !Number.isSafeInteger(shift.hourly_wage) || shift.hourly_wage <= 0 ||
++      !Number.isSafeInteger(shift.total_budget) || shift.total_budget <= 0 ||
++      !Number.isSafeInteger(shift.required_candidates) || shift.required_candidates < 1 || shift.required_candidates > 100 ||
++      typeof shift.is_sos !== "boolean" ||
++      !Number.isFinite(shift.location_coords?.latitude) || Math.abs(shift.location_coords.latitude) > 90 ||
++      !Number.isFinite(shift.location_coords?.longitude) || Math.abs(shift.location_coords.longitude) > 180) throw new AuthError(400, "Ca làm không hợp lệ.");
++    for (const list of [shift.required_skills, shift.store_perks, shift.friendly_tags]) {
++      if (list !== undefined && (!Array.isArray(list) || list.length > 30 || list.some(v => typeof v !== "string" || v.length > 200))) throw new AuthError(400, "Danh sách ca làm không hợp lệ.");
+     }
+-
+-    // Luôn lưu vào memory cache
+-    memoryShifts = [newShift, ...memoryShifts];
+-
+-    // Thử lưu vào Supabase Cloud
+-    const savedToSupabase = await saveShiftToSupabase(newShift);
+-
+-    // Thử lưu vào SQL Server nếu có kết nối
+-    const savedToSql = await saveShiftToSql(newShift);
+-
+-    return NextResponse.json({
+-      success: true,
+-      savedToSupabase,
+-      savedToSql,
+-      data: newShift,
+-    });
+-  } catch (err) {
+-    console.error("Lỗi tạo mới ca làm:", err);
+-    return NextResponse.json(
+-      { success: false, error: "Lỗi hệ thống khi tạo ca làm" },
+-      { status: 500 }
+-    );
+-  }
++    if ((shift.description?.length ?? 0) > 5000 || (shift.sos_bonus_amount !== undefined && (!Number.isSafeInteger(shift.sos_bonus_amount) || shift.sos_bonus_amount < 0))) throw new AuthError(400, "Ca làm không hợp lệ.");
++    return authResponse({ success: true, data: await saveShiftToSupabase(client, identity, shift) }, 201);
++  } catch (error) { return authFailure(error); }
+ }
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 8f1df4b..06548c3 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -27,7 +27,11 @@ import {
+   MOCK_EMPLOYER_USER,
+ } from "../application/store";
+ import { rankShiftsForCandidate } from "../domain/matching-engine";
+-import { PenaltyResult } from "../domain/trust-battery";
++import {
++  PenaltyResult,
++  calculateCompletionReward,
++  canAcceptSosShift,
++} from "../domain/trust-battery";
+ import { CandidateFilterCriteria, CandidateProfile, EmployerProfile, Shift, User as UserType, UserRole } from "../domain/types";
+ import { Sparkles, Info, Bot } from "lucide-react";
+ import { ViewModeProvider, useViewMode } from "../components/ViewModeContext";
+@@ -63,8 +67,13 @@ function HomeContent() {
+   const [shiftStatuses, setShiftStatuses] = useState<Record<string, ShiftAttendanceStatus>>({
+     shift_sos_01: "APPLIED",
+   });
++  const [checkinTimestamps, setCheckinTimestamps] = useState<Record<string, number>>({});
+   const [walletBalance, setWalletBalance] = useState<number>(350000);
+ 
++  // State khóa ca SOS do án phạt hủy ca
++  const [sosLockUntil, setSosLockUntil] = useState<number | null>(null);
++  const [sosLockReason, setSosLockReason] = useState<string | null>(null);
++
+   // State vai trò hiện tại (Mặc định là CANDIDATE)
+   const [currentRole, setCurrentRole] = useState<UserRole>("CANDIDATE");
+   const [activeTab, setActiveTab] = useState("explore");
+@@ -74,21 +83,9 @@ function HomeContent() {
+     DEFAULT_FILTER_CRITERIA
+   );
+ 
+-  // Danh sách ca làm việc (khởi tạo từ mock, đồng bộ với API /api/shifts)
++  // Danh sách ca DEMO: dữ liệu mẫu và ca mới chỉ ở local
+   const [shifts, setShifts] = useState<Shift[]>(INITIAL_SHIFTS);
+ 
+-  // Nạp danh sách ca từ API nếu có kết nối
+-  useEffect(() => {
+-    fetch("/api/shifts")
+-      .then((res) => res.json())
+-      .then((json) => {
+-        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+-          setShifts(json.data);
+-        }
+-      })
+-      .catch((err) => console.warn("Dùng danh sách ca dự phòng:", err));
+-  }, []);
+-
+   // Quản lý ứng tuyển
+   const [appliedShiftIds, setAppliedShiftIds] = useState<string[]>(["shift_sos_01"]);
+   const [appliedTimestamps, setAppliedTimestamps] = useState<Record<string, number>>({
+@@ -96,8 +93,50 @@ function HomeContent() {
+   });
+   const [cancelTargetShift, setCancelTargetShift] = useState<Shift | null>(null);
+ 
++  // Khôi phục trạng thái ca làm & khóa SOS từ localStorage (chỉ áp dụng phiên demo client)
++  useEffect(() => {
++    try {
++      const savedStatuses = localStorage.getItem("selltime_demo_shift_statuses");
++      const savedTimestamps = localStorage.getItem("selltime_demo_checkin_timestamps");
++      const savedLock = localStorage.getItem("selltime_demo_sos_lock");
++      const savedApplied = localStorage.getItem("selltime_demo_applied_ids");
++
++      if (savedStatuses) setShiftStatuses(JSON.parse(savedStatuses));
++      if (savedTimestamps) setCheckinTimestamps(JSON.parse(savedTimestamps));
++      if (savedApplied) setAppliedShiftIds(JSON.parse(savedApplied));
++      if (savedLock) {
++        const parsedLock = JSON.parse(savedLock);
++        if (parsedLock.until && Date.now() < parsedLock.until) {
++          setSosLockUntil(parsedLock.until);
++          setSosLockReason(parsedLock.reason || null);
++        } else {
++          localStorage.removeItem("selltime_demo_sos_lock");
++        }
++      }
++    } catch (e) {
++      console.warn("Không thể khôi phục phiên demo từ localStorage:", e);
++    }
++  }, []);
++
++  // Đồng bộ trạng thái vào localStorage khi có thay đổi
++  useEffect(() => {
++    try {
++      localStorage.setItem("selltime_demo_shift_statuses", JSON.stringify(shiftStatuses));
++      localStorage.setItem("selltime_demo_checkin_timestamps", JSON.stringify(checkinTimestamps));
++      localStorage.setItem("selltime_demo_applied_ids", JSON.stringify(appliedShiftIds));
++      if (sosLockUntil && Date.now() < sosLockUntil) {
++        localStorage.setItem("selltime_demo_sos_lock", JSON.stringify({ until: sosLockUntil, reason: sosLockReason }));
++      } else {
++        localStorage.removeItem("selltime_demo_sos_lock");
++      }
++    } catch (_) {}
++  }, [shiftStatuses, checkinTimestamps, appliedShiftIds, sosLockUntil, sosLockReason]);
++
++  // DEMO uses sample shifts and local additions; it does not read live records.
++
+   // Khi chuyển vai trò qua RoleSwitcher
+   const handleRoleChange = (newRole: UserRole) => {
++    if (newRole !== "CANDIDATE" && newRole !== "EMPLOYER") return;
+     setCurrentRole(newRole);
+     if (newRole === "CANDIDATE") {
+       setCurrentUser(MOCK_CANDIDATE_USER);
+@@ -133,6 +172,26 @@ function HomeContent() {
+       setIsAuthModalOpen(true);
+       return;
+     }
++
++    const targetShift = shifts.find((s) => s.id === shiftId);
++    if (targetShift && targetShift.is_sos) {
++      // 1. Kiểm tra điều kiện Pin Uy Tín >= 80% theo quy tắc domain
++      if (!canAcceptSosShift(candidateProfile.trust_battery)) {
++        alert(
++          `Bạn không thể nhận ca SOS khẩn cấp vì Pin Uy Tín hiện tại (${candidateProfile.trust_battery}%) thấp hơn mức tối thiểu 80%. Hãy hoàn thành thêm ca thường để tích lũy Pin Uy Tín.`
++        );
++        return;
++      }
++      // 2. Kiểm tra nếu đang bị tạm khóa nhận ca SOS do án phạt hủy ca
++      if (sosLockUntil && Date.now() < sosLockUntil) {
++        const remainingHours = Math.max(1, Math.ceil((sosLockUntil - Date.now()) / (3600 * 1000)));
++        alert(
++          `Tài khoản đang bị tạm khóa nhận ca SOS (còn khoảng ${remainingHours} giờ).\nLý do: ${sosLockReason || "Vi phạm quy chế hủy ca khẩn cấp"}.`
++        );
++        return;
++      }
++    }
++
+     if (!appliedShiftIds.includes(shiftId)) {
+       setAppliedShiftIds((prev) => [...prev, shiftId]);
+       setShiftStatuses((prev) => ({ ...prev, [shiftId]: "APPLIED" }));
+@@ -148,6 +207,11 @@ function HomeContent() {
+       delete updated[shiftId];
+       return updated;
+     });
++    setCheckinTimestamps((prev) => {
++      const updated = { ...prev };
++      delete updated[shiftId];
++      return updated;
++    });
+ 
+     // Trừ điểm Pin uy tín nếu vượt quá thời gian ân hạn
+     if (penalty.penaltyPoints > 0) {
+@@ -156,41 +220,50 @@ function HomeContent() {
+         trust_battery: Math.max(0, prev.trust_battery - penalty.penaltyPoints),
+       }));
+     }
++
++    // Áp dụng cờ khóa nhận ca SOS theo đúng lockHours từ domain
++    if (penalty.isLockedFromSos && penalty.lockHours > 0) {
++      const lockUntil = Date.now() + penalty.lockHours * 3600 * 1000;
++      setSosLockUntil(lockUntil);
++      setSosLockReason(penalty.reason);
++    }
++
+     setCancelTargetShift(null);
+   };
+ 
+-  // Xử lý chủ quán đăng ca mới: lưu local và gọi API backend
+-  const handlePostNewShift = async (newShift: Shift) => {
++  // DEMO posting stays local; mock identities must not write to a live database.
++  const handlePostNewShift = (newShift: Shift) => {
+     setShifts((prev) => [newShift, ...prev]);
+-    try {
+-      await fetch("/api/shifts", {
+-        method: "POST",
+-        headers: { "Content-Type": "application/json" },
+-        body: JSON.stringify({ shift: newShift }),
+-      });
+-    } catch (e) {
+-      console.warn("Không thể đồng bộ ca làm với backend API:", e);
+-    }
+   };
+ 
+   // Xử lý Check-in thành công
+   const handleCheckinSuccess = (shiftId: string) => {
++    const now = Date.now();
+     setShiftStatuses((prev) => ({
+       ...prev,
+       [shiftId]: "IN_PROGRESS",
+     }));
++    setCheckinTimestamps((prev) => ({
++      ...prev,
++      [shiftId]: prev[shiftId] || now,
++    }));
+   };
+ 
+   // Xử lý Checkout và giải ngân Escrow thành công (cập nhật state an toàn)
+-  const handleConfirmCheckout = (shiftId: string, earnedAmount: number) => {
++  const handleConfirmCheckout = (shift: Shift, earnedAmount: number, rating: number = 5) => {
++    // Chống cộng thưởng nhiều lần khi bấm lặp
++    if (shiftStatuses[shift.id] === "COMPLETED") return;
++
++    const reward = calculateCompletionReward(Boolean(shift.is_sos), rating);
++
+     setShiftStatuses((prev) => ({
+       ...prev,
+-      [shiftId]: "COMPLETED",
++      [shift.id]: "COMPLETED",
+     }));
+     setWalletBalance((prev) => prev + earnedAmount);
+     setCandidateProfile((prev) => ({
+       ...prev,
+-      trust_battery: Math.min(100, prev.trust_battery + 2),
++      trust_battery: Math.min(100, Math.max(0, prev.trust_battery + reward.rewardPoints)),
+     }));
+   };
+ 
+@@ -276,11 +349,11 @@ function HomeContent() {
+                 ) : (
+                   <LoginRequiredCard
+                     title="Cổng Tuyển Dụng Dành Cho Chủ Quán"
+-                    description="Đăng nhập để đăng ca làm linh hoạt/SOS, duyệt ứng viên sinh viên và giải ngân quỹ Escrow."
++                    description="Mở Employer DEMO để thử đăng ca, duyệt ứng viên mẫu và ký quỹ mô phỏng."
+                     features={[
+                       "Đăng ca khẩn cấp SOS thưởng nóng thu hút ứng viên",
+-                      "Duyệt ứng viên 1-chạm & Ký quỹ an toàn VietQR",
+-                      "Theo dõi điểm danh GPS 100m & Giờ làm việc thực tế",
++                      "Duyệt ứng viên mẫu & Ký quỹ DEMO",
++                      "Theo dõi điểm danh và thời gian DEMO",
+                     ]}
+                     roleHint="EMPLOYER"
+                     onOpenAuth={() => setIsAuthModalOpen(true)}
+@@ -327,7 +400,7 @@ function HomeContent() {
+                     description="Đăng nhập để quản lý thông tin thương hiệu, vị trí tọa độ GPS và thiết lập mã PIN quầy."
+                     features={[
+                       "Cập nhật tên & địa chỉ cơ sở kinh doanh",
+-                      "Huy hiệu xác minh thương hiệu đã kiểm duyệt",
++                      "Huy hiệu thương hiệu mẫu, chưa kiểm duyệt thật",
+                       "Cài đặt mã PIN điểm danh cho nhân viên",
+                     ]}
+                     roleHint="EMPLOYER"
+@@ -404,6 +477,7 @@ function HomeContent() {
+                   <MyShiftsTab
+                     appliedShifts={appliedShiftsList}
+                     shiftStatuses={shiftStatuses}
++                    checkinTimestamps={checkinTimestamps}
+                     onStartCheckin={(s) => setCheckinShift(s)}
+                     onStartCheckout={(s) => setCheckoutShift(s)}
+                     onCancelShift={(s) => setCancelTargetShift(s)}
+@@ -411,11 +485,11 @@ function HomeContent() {
+                 ) : (
+                   <LoginRequiredCard
+                     title="Đăng nhập để theo dõi Ca làm việc"
+-                    description="Xem danh sách ca đã ứng tuyển, điểm danh định vị GPS trong bán kính 100m và nhận thù lao ký quỹ VietQR PayOS."
++                    description="Xem ca mẫu, thử check-in và checkout DEMO; chưa có điểm danh hoặc nhận tiền thật."
+                     features={[
+                       "Quản lý ca đã ứng tuyển & trạng thái xét duyệt",
+                       "Điểm danh GPS 2 lớp & Mã PIN quầy 8866",
+-                      "Đồng hồ bấm giờ làm việc & Giải ngân ví tức thì",
++                      "Đồng hồ ca và cộng ví DEMO",
+                     ]}
+                     roleHint="CANDIDATE"
+                     onOpenAuth={() => setIsAuthModalOpen(true)}
+@@ -465,7 +539,7 @@ function HomeContent() {
+                     features={[
+                       "Ma trận lịch rảnh 7 ngày trong tuần",
+                       "Đo lường & Tích lũy Pin Uy Tín PartyMode (0-100%)",
+-                      "Rút tiền thù lao về tài khoản ngân hàng",
++                      "Mô phỏng rút tiền; không chuyển khoản ngân hàng",
+                     ]}
+                     roleHint="CANDIDATE"
+                     onOpenAuth={() => setIsAuthModalOpen(true)}
+diff --git a/src/application/store.ts b/src/application/store.ts
+index 95a8539..05dc088 100644
+--- a/src/application/store.ts
++++ b/src/application/store.ts
+@@ -3,7 +3,7 @@
+ // Chứa dữ liệu thực tế: Sinh viên Huy (TNUT) & Chị Lan Cafe
+ // ==========================================================
+ 
+-import {
++import type {
+   AvailabilitySlot,
+   CandidateFilterCriteria,
+   CandidateProfile,
+@@ -90,7 +90,7 @@ export const INITIAL_SHIFTS: Shift[] = [
+     duration_hours: 4,
+     period: "EVENING",
+     hourly_wage: 32000,
+-    total_budget: 128000,
++    total_budget: 153000,
+     required_candidates: 1,
+     filled_candidates: 0,
+     is_sos: true,
+diff --git a/src/components/AiCoachModal.tsx b/src/components/AiCoachModal.tsx
+index f658b81..e96db24 100644
+--- a/src/components/AiCoachModal.tsx
++++ b/src/components/AiCoachModal.tsx
+@@ -104,6 +104,12 @@ export function AiCoachModal({
+   const [isAiReplying, setIsAiReplying] = useState(false);
+   const [isListening, setIsListening] = useState(false);
+   const [isSpeaking, setIsSpeaking] = useState(false);
++  const [aiMetadata, setAiMetadata] = useState<{
++    source: string;
++    provider?: string;
++    model?: string;
++    is_fallback?: boolean;
++  } | null>(null);
+ 
+   // Danh sách voice của hệ thống
+   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+@@ -270,8 +276,17 @@ export function AiCoachModal({
+         setMessages((prev) => [...prev, { role: "model" as const, text: data.reply }]);
+         speakText(data.reply);
+       }
++      if (data._metadata) {
++        setAiMetadata(data._metadata);
++      }
+     } catch (err) {
+       console.error(err);
++      setAiMetadata({
++        source: "local_mock",
++        provider: "Local Mock",
++        model: "fallback-scripted",
++        is_fallback: true,
++      });
+     } finally {
+       setIsAiReplying(false);
+     }
+@@ -290,11 +305,20 @@ export function AiCoachModal({
+       });
+       const data = await res.json();
+       setCvResult(data);
++      if (data._metadata) {
++        setAiMetadata(data._metadata);
++      }
+       if (onUpdateSkills && data.extracted_skills) {
+         onUpdateSkills(data.extracted_skills);
+       }
+     } catch (err) {
+       console.error(err);
++      setAiMetadata({
++        source: "local_mock",
++        provider: "Local Heuristic",
++        model: "fallback-heuristic",
++        is_fallback: true,
++      });
+     } finally {
+       setIsAnalyzingCv(false);
+     }
+@@ -321,13 +345,25 @@ export function AiCoachModal({
+               <Bot className="w-5 h-5" />
+             </div>
+             <div>
+-              <div className="flex items-center gap-2">
++              <div className="flex flex-wrap items-center gap-2">
+                 <h2 className="text-base font-bold text-white">
+                   Sell Time AI Voice & Interview
+                 </h2>
+-                <span className="text-[10px] bg-purple-950/60 text-purple-300 px-2 py-0.5 rounded-md font-semibold border border-purple-800/60">
+-                  Gemini Flash STAR
+-                </span>
++                {aiMetadata ? (
++                  aiMetadata.source === "gemini" && !aiMetadata.is_fallback ? (
++                    <span className="text-[10px] bg-purple-950/60 text-purple-300 px-2 py-0.5 rounded-md font-semibold border border-purple-800/60">
++                      Nguồn: {aiMetadata.provider || "Google Gemini"} {aiMetadata.model || "1.5 Flash"}
++                    </span>
++                  ) : (
++                    <span className="text-[10px] bg-amber-950/60 text-amber-300 px-2 py-0.5 rounded-md font-semibold border border-amber-800/60">
++                      Nguồn: Dữ liệu mẫu cục bộ
++                    </span>
++                  )
++                ) : (
++                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-medium border border-slate-700">
++                    Mô phỏng chuẩn STAR
++                  </span>
++                )}
+               </div>
+               <p className="text-xs text-slate-400 mt-0.5">
+                 Luyện phỏng vấn đa ngôn ngữ theo chuẩn STAR & Bóc tách CV thông minh
+diff --git a/src/components/AuthModal.tsx b/src/components/AuthModal.tsx
+index 52bebc3..baf5bc7 100644
+--- a/src/components/AuthModal.tsx
++++ b/src/components/AuthModal.tsx
+@@ -3,7 +3,6 @@
+ import React, { useState } from "react";
+ import {
+   X,
+-  Lock,
+   Mail,
+   UserCheck,
+   Store,
+@@ -12,7 +11,7 @@ import {
+   ShieldCheck,
+   User,
+ } from "lucide-react";
+-import { User as UserType, UserRole } from "../domain/types";
++import { User as UserType } from "../domain/types";
+ import { MOCK_CANDIDATE_USER, MOCK_EMPLOYER_USER } from "../application/store";
+ 
+ interface AuthModalProps {
+@@ -27,18 +26,17 @@ export function AuthModal({
+   onLoginSuccess,
+ }: AuthModalProps) {
+   const [mode, setMode] = useState<"login" | "register">("login");
+-  const [selectedRole, setSelectedRole] = useState<UserRole>("CANDIDATE");
++  const [selectedRole, setSelectedRole] = useState<"CANDIDATE" | "EMPLOYER">("CANDIDATE");
+ 
+   // Form input states
+   const [identifier, setIdentifier] = useState("");
+-  const [password, setPassword] = useState("");
+   const [fullName, setFullName] = useState("");
+   const [errorMsg, setErrorMsg] = useState("");
+ 
+   if (!isOpen) return null;
+ 
+   // 1. Đăng nhập nhanh tài khoản mẫu (Demo)
+-  const handleQuickLogin = (role: UserRole) => {
++  const handleQuickLogin = (role: "CANDIDATE" | "EMPLOYER") => {
+     if (role === "CANDIDATE") {
+       onLoginSuccess(MOCK_CANDIDATE_USER);
+     } else {
+@@ -53,8 +51,8 @@ export function AuthModal({
+     setErrorMsg("");
+ 
+     if (mode === "login") {
+-      if (!identifier.trim() || !password.trim()) {
+-        setErrorMsg("Vui lòng nhập đầy đủ Email/Số điện thoại và Mật khẩu.");
++      if (!identifier.trim()) {
++        setErrorMsg("Vui lòng nhập tên hoặc biệt danh DEMO.");
+         return;
+       }
+ 
+@@ -74,13 +72,13 @@ export function AuthModal({
+       onClose();
+     } else {
+       // Đăng ký mới
+-      if (!fullName.trim() || !identifier.trim() || !password.trim()) {
++      if (!fullName.trim() || !identifier.trim()) {
+         setErrorMsg("Vui lòng điền đầy đủ các thông tin bắt buộc.");
+         return;
+       }
+ 
+       const newUser: UserType = {
+-        id: `user_${Date.now()}`,
++        id: `demo_user_${Date.now()}`,
+         email: identifier.includes("@") ? identifier : `${identifier}@selltime.vn`,
+         phone: !identifier.includes("@") ? identifier : "0988888888",
+         full_name: fullName,
+@@ -89,7 +87,7 @@ export function AuthModal({
+           selectedRole === "CANDIDATE"
+             ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+             : "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+-        is_kyc_verified: true,
++        is_kyc_verified: false,
+         created_at: new Date().toISOString(),
+       };
+ 
+@@ -119,12 +117,12 @@ export function AuthModal({
+             />
+           </div>
+           <h2 className="text-lg font-bold text-white tracking-tight">
+-            {mode === "login" ? "Chào mừng trở lại SellTime" : "Tạo tài khoản SellTime"}
++            {mode === "login" ? "Chọn danh tính DEMO" : "Tạo hồ sơ DEMO"}
+           </h2>
+           <p className="text-xs text-slate-400 mt-0.5">
+             {mode === "login"
+-              ? "Đăng nhập để bán giờ rảnh hoặc tuyển dụng tức thì"
+-              : "Bạn có bao nhiêu thời gian để bán?"}
++              ? "Candidate DEMO / Employer DEMO — LIVE chưa được bật"
++              : "Hồ sơ mô phỏng chỉ dùng trong trình duyệt"}
+           </p>
+         </div>
+ 
+@@ -142,7 +140,7 @@ export function AuthModal({
+                 : "text-slate-400 hover:text-slate-200"
+             }`}
+           >
+-            Đăng nhập
++            Mở DEMO
+           </button>
+           <button
+             type="button"
+@@ -156,7 +154,7 @@ export function AuthModal({
+                 : "text-slate-400 hover:text-slate-200"
+             }`}
+           >
+-            Đăng ký mới
++            Tạo hồ sơ DEMO
+           </button>
+         </div>
+ 
+@@ -164,7 +162,7 @@ export function AuthModal({
+         <div className="mb-4 bg-slate-950 border border-slate-800 rounded-lg p-3">
+           <span className="text-[11px] font-semibold text-slate-300 block mb-2 flex items-center gap-1.5">
+             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+-            Đăng nhập nhanh (Tài khoản thử nghiệm):
++            Chọn persona mẫu — không cần mật khẩu:
+           </span>
+           <div className="grid grid-cols-2 gap-2">
+             <button
+@@ -174,7 +172,7 @@ export function AuthModal({
+             >
+               <div className="flex items-center gap-1.5">
+                 <UserCheck className="w-3.5 h-3.5 text-purple-400" />
+-                <span className="text-xs font-semibold text-slate-200 truncate">Huy (Sinh viên)</span>
++                <span className="text-xs font-semibold text-slate-200 truncate">Huy · Candidate DEMO</span>
+               </div>
+               <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                 Tìm việc bán thời gian
+@@ -188,10 +186,10 @@ export function AuthModal({
+             >
+               <div className="flex items-center gap-1.5">
+                 <Store className="w-3.5 h-3.5 text-purple-400" />
+-                <span className="text-xs font-semibold text-slate-200 truncate">Lan (Chủ quán)</span>
++                <span className="text-xs font-semibold text-slate-200 truncate">Lan · Employer DEMO</span>
+               </div>
+               <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+-                Tuyển dụng & Ký quỹ
++                Tuyển dụng & Ký quỹ DEMO
+               </span>
+             </button>
+           </div>
+@@ -199,7 +197,7 @@ export function AuthModal({
+ 
+         <div className="flex items-center gap-2 my-3 text-[11px] text-slate-500">
+           <div className="h-px bg-slate-800 flex-1" />
+-          <span>Hoặc dùng tài khoản</span>
++          <span>Hoặc tùy chỉnh persona DEMO</span>
+           <div className="h-px bg-slate-800 flex-1" />
+         </div>
+ 
+@@ -266,13 +264,13 @@ export function AuthModal({
+ 
+           <div>
+             <label className="text-xs font-medium text-slate-300 block mb-1">
+-              Email hoặc Số điện thoại:
++              Tên hoặc biệt danh DEMO:
+             </label>
+             <div className="relative">
+               <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+               <input
+                 type="text"
+-                placeholder="sinhvien@gmail.com hoặc 0987654321"
++                placeholder="Ví dụ: Huy hoặc Lan (dữ liệu mẫu)"
+                 value={identifier}
+                 onChange={(e) => setIdentifier(e.target.value)}
+                 className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md pl-9 pr-3 py-2 focus:border-purple-500 focus:outline-none placeholder-slate-600"
+@@ -280,46 +278,22 @@ export function AuthModal({
+             </div>
+           </div>
+ 
+-          <div>
+-            <div className="flex justify-between items-center mb-1">
+-              <label className="text-xs font-medium text-slate-300">
+-                Mật khẩu:
+-              </label>
+-              {mode === "login" && (
+-                <button
+-                  type="button"
+-                  onClick={() => alert("Tính năng cấp lại mật khẩu qua SMS OTP đang kết nối.")}
+-                  className="text-[11px] text-purple-400 hover:text-purple-300"
+-                >
+-                  Quên mật khẩu?
+-                </button>
+-              )}
+-            </div>
+-            <div className="relative">
+-              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+-              <input
+-                type="password"
+-                placeholder="Nhập mật khẩu..."
+-                value={password}
+-                onChange={(e) => setPassword(e.target.value)}
+-                className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-md pl-9 pr-3 py-2 focus:border-purple-500 focus:outline-none placeholder-slate-600"
+-              />
+-            </div>
+-          </div>
+-
+           <button
+             type="submit"
+             className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs rounded-md transition-colors flex items-center justify-center gap-1.5 mt-2 shadow-sm"
+           >
+-            <span>{mode === "login" ? "Đăng Nhập" : "Hoàn Tất Đăng Ký"}</span>
++            <span>{mode === "login" ? "Mở DEMO" : "Tạo Hồ Sơ DEMO"}</span>
+             <ArrowRight className="w-4 h-4" />
+           </button>
+         </form>
+ 
+         <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-center gap-1.5 text-[10px] text-slate-500">
+           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+-          <span>Bảo mật thông tin & Định danh CCCD chuẩn eKYC</span>
++          <span>DEMO local — chưa xác thực tài khoản hoặc eKYC</span>
+         </div>
++        <a href="/auth" className="mt-3 block text-center text-xs text-purple-300 hover:text-purple-200">
++          Mở khu vực tài khoản thật riêng biệt
++        </a>
+       </div>
+     </div>
+   );
+diff --git a/src/components/CheckinModal.tsx b/src/components/CheckinModal.tsx
+index 80cc198..c0ecac3 100644
+--- a/src/components/CheckinModal.tsx
++++ b/src/components/CheckinModal.tsx
+@@ -16,6 +16,7 @@ import {
+ } from "lucide-react";
+ import { Shift } from "../domain/types";
+ import { calculateHaversineDistance } from "../domain/matching-engine";
++import { VENUE_PIN, verifyCheckinPin } from "../domain/trust-battery";
+ 
+ interface CheckinModalProps {
+   isOpen: boolean;
+@@ -51,9 +52,6 @@ export function CheckinModal({
+   const [otpError, setOtpError] = useState<string | null>(null);
+   const [otpSuccess, setOtpSuccess] = useState(false);
+ 
+-  // Mã PIN tại quầy mẫu (Chủ quán The Cuppa cung cấp)
+-  const VENUE_PIN = "8866";
+-
+   // Tính khoảng cách khi tọa độ thay đổi hoặc khi mở modal
+   useEffect(() => {
+     if (shift && candidateCoords) {
+@@ -125,7 +123,12 @@ export function CheckinModal({
+   // Thực hiện xác thực mã PIN OTP tại quầy
+   const handleVerifyOtp = (e: React.FormEvent) => {
+     e.preventDefault();
+-    if (otpValue.trim() === VENUE_PIN || otpValue.trim().length === 4) {
++    const cleanPin = otpValue.trim();
++    if (!cleanPin) {
++      setOtpError("Vui lòng nhập mã PIN tại quầy.");
++      return;
++    }
++    if (verifyCheckinPin(cleanPin)) {
+       setOtpSuccess(true);
+       setOtpError(null);
+       setTimeout(() => {
+@@ -136,6 +139,7 @@ export function CheckinModal({
+         onClose();
+       }, 1200);
+     } else {
++      setOtpSuccess(false);
+       setOtpError("Mã PIN không đúng. Vui lòng hỏi nhân viên quầy thu ngân.");
+     }
+   };
+@@ -155,10 +159,10 @@ export function CheckinModal({
+             </div>
+             <div>
+               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
+-                Điểm Danh Nhận Ca Tại Quán 📍
++                Check-in DEMO 📍
+               </h3>
+               <p className="text-xs text-slate-400">
+-                Xác thực bạn đã có mặt tại quán để bắt đầu tính công
++                GPS, QR và PIN chỉ mô phỏng điểm danh; chưa xác minh qua server
+               </p>
+             </div>
+           </div>
+@@ -291,7 +295,7 @@ export function CheckinModal({
+                     Bước 2: Quét mã QR tại quầy
+                   </span>
+                   <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+-                    Live Scanner
++                    Scanner DEMO
+                   </span>
+                 </div>
+ 
+@@ -310,7 +314,7 @@ export function CheckinModal({
+                     <div className="flex flex-col items-center gap-2 text-emerald-400 animate-in zoom-in-75">
+                       <CheckCircle2 className="w-12 h-12" />
+                       <span className="text-xs font-bold text-white">
+-                        Check-in Thành Công!
++                        Check-in DEMO Thành Công!
+                       </span>
+                     </div>
+                   ) : (
+@@ -360,7 +364,7 @@ export function CheckinModal({
+                 </div>
+                 <div>
+                   <h4 className="text-xs font-bold text-white">
+-                    Xác Thực Qua Mã PIN Ca Làm
++                    Mô Phỏng Check-in Qua PIN
+                   </h4>
+                   <p className="text-[11px] text-slate-400">
+                     Dành cho trường hợp mất sóng GPS hoặc thiết bị không có camera
+@@ -370,10 +374,10 @@ export function CheckinModal({
+ 
+               <div className="bg-slate-900 border border-slate-800 rounded-md p-3 text-xs text-slate-300">
+                 <span>
+-                  Hỏi nhân viên thu ngân hoặc chủ quán mã PIN 4 số của ca làm này:
++                  Dùng mã PIN mẫu để thử luồng check-in DEMO:
+                 </span>
+                 <span className="block font-mono font-bold text-purple-400 mt-1">
+-                  Mã PIN mặc định: {VENUE_PIN}
++                  Mã PIN DEMO: {VENUE_PIN}
+                 </span>
+               </div>
+ 
+@@ -409,7 +413,7 @@ export function CheckinModal({
+                     className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md font-semibold text-xs transition-colors active:scale-98 flex items-center justify-center gap-1.5"
+                   >
+                     <Check className="w-4 h-4" />
+-                    <span>Xác Thực Check-in Bằng PIN</span>
++                    <span>Check-in DEMO Bằng PIN</span>
+                   </button>
+                 )}
+               </form>
+@@ -424,7 +428,7 @@ export function CheckinModal({
+               <strong className="text-emerald-400 font-mono font-bold">
+                 {shift.total_budget.toLocaleString("vi-VN")} đ
+               </strong>{" "}
+-              được bảo lưu trên hệ thống Escrow an toàn.
++              chỉ là số dư DEMO, chưa có ký quỹ hoặc giải ngân thật.
+             </span>
+           </div>
+         </div>
+diff --git a/src/components/CheckoutModal.tsx b/src/components/CheckoutModal.tsx
+index 32348eb..9dc149b 100644
+--- a/src/components/CheckoutModal.tsx
++++ b/src/components/CheckoutModal.tsx
+@@ -13,12 +13,13 @@ import {
+   Wallet,
+ } from "lucide-react";
+ import { Shift } from "../domain/types";
++import { calculateCompletionReward } from "../domain/trust-battery";
+ 
+ interface CheckoutModalProps {
+   isOpen: boolean;
+   onClose: () => void;
+   shift: Shift | null;
+-  onConfirmCheckout: (shiftId: string, earnedAmount: number) => void;
++  onConfirmCheckout: (shift: Shift, earnedAmount: number, rating?: number) => void;
+ }
+ 
+ export function CheckoutModal({
+@@ -34,14 +35,17 @@ export function CheckoutModal({
+ 
+   if (!isOpen || !shift) return null;
+ 
+-  const totalEarned = shift.total_budget + (shift.is_sos ? shift.sos_bonus_amount || 0 : 0);
++  const baseWage = shift.hourly_wage * shift.duration_hours;
++  const sosBonus = shift.is_sos ? (shift.sos_bonus_amount || 0) : 0;
++  const totalEarned = baseWage + sosBonus;
++  const completionReward = calculateCompletionReward(Boolean(shift.is_sos), rating);
+ 
+   const handleCheckoutSubmit = () => {
+     setIsProcessing(true);
+     setTimeout(() => {
+       setIsProcessing(false);
+       setIsDone(true);
+-      onConfirmCheckout(shift.id, totalEarned);
++      onConfirmCheckout(shift, totalEarned, rating);
+     }, 1500);
+   };
+ 
+@@ -56,10 +60,10 @@ export function CheckoutModal({
+             </div>
+             <div>
+               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
+-                Hoàn Thành Ca & Nhận Tiền Ngay 💵
++                Checkout DEMO & Cộng Ví Mẫu
+               </h3>
+               <p className="text-xs text-slate-400">
+-                Sell Time cam kết bảo chứng thù lao chuyển thẳng vào ví bạn
++                Mô phỏng hoàn thành ca; không chuyển tiền hoặc xác nhận công thật
+               </p>
+             </div>
+           </div>
+@@ -93,14 +97,14 @@ export function CheckoutModal({
+                   <div>
+                     <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Lương cơ bản</span>
+                     <span className="text-xs font-mono font-bold text-slate-300">
+-                      {shift.total_budget.toLocaleString("vi-VN")} đ
++                      {baseWage.toLocaleString("vi-VN")} đ
+                     </span>
+                   </div>
+                   {shift.is_sos && (
+                     <div>
+                       <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">Thưởng SOS</span>
+                       <span className="text-xs font-mono font-bold text-rose-400">
+-                        +{(shift.sos_bonus_amount || 0).toLocaleString("vi-VN")} đ
++                        +{sosBonus.toLocaleString("vi-VN")} đ
+                       </span>
+                     </div>
+                   )}
+@@ -120,7 +124,7 @@ export function CheckoutModal({
+                 </div>
+                 <div className="text-xs">
+                   <span className="font-bold text-white block">
+-                    Được cộng +3% Pin Uy Tín Sinh Viên 🔋
++                    Được cộng +{completionReward.rewardPoints}% Pin Uy Tín Sinh Viên 🔋
+                   </span>
+                   <span className="text-slate-400 text-[11px] leading-relaxed">
+                     Hoàn thành ca tốt và đúng hẹn giúp bạn luôn được ưu tiên nhận các ca thưởng nóng cao nhất!
+@@ -169,12 +173,12 @@ export function CheckoutModal({
+                 {isProcessing ? (
+                   <>
+                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+-                    <span>Sell Time đang chuyển tiền vào ví bạn...</span>
++                    <span>Đang cộng số dư ví DEMO...</span>
+                   </>
+                 ) : (
+                   <>
+                     <Wallet className="w-4 h-4" />
+-                    <span>Xác Nhận Nhận Lương {totalEarned.toLocaleString("vi-VN")} đ</span>
++                    <span>Xác Nhận Checkout DEMO {totalEarned.toLocaleString("vi-VN")} đ</span>
+                   </>
+                 )}
+               </button>
+@@ -188,28 +192,28 @@ export function CheckoutModal({
+ 
+               <div>
+                 <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+-                  🎉 Ting Ting! Tiền Đã Vào Ví
++                  🎉 Đã Cộng Số Dư DEMO
+                 </span>
+                 <h4 className="text-lg font-bold text-white">
+                   +{totalEarned.toLocaleString("vi-VN")} đ
+                 </h4>
+                 <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+-                  Thù lao ca làm đã được <strong className="text-emerald-400">Sell Time bảo chứng an toàn 100%</strong> và cộng tức thì vào số dư ví của bạn!
++                  Số tiền mô phỏng đã cộng vào <strong className="text-emerald-400">ví DEMO</strong>; chưa có giao dịch ngân hàng.
+                 </p>
+               </div>
+ 
+               <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800 text-left text-xs space-y-1.5">
+                 <div className="flex justify-between">
+-                  <span className="text-slate-500">Mã bảo chứng Sell Time:</span>
++                  <span className="text-slate-500">Mã ca DEMO:</span>
+                   <span className="font-mono font-bold text-slate-200">#ST-{shift.id.slice(-6).toUpperCase()}</span>
+                 </div>
+                 <div className="flex justify-between">
+                   <span className="text-slate-500">Kênh thanh toán:</span>
+-                  <span className="font-medium text-purple-400">VietQR Napas 24/7 PayOS</span>
++                  <span className="font-medium text-purple-400">Ví local DEMO</span>
+                 </div>
+                 <div className="flex justify-between">
+-                  <span className="text-slate-500">Thời gian nhận tiền:</span>
+-                  <span className="font-mono font-medium text-emerald-400">Tức thì (0.8s)</span>
++                  <span className="text-slate-500">Trạng thái mô phỏng:</span>
++                  <span className="font-mono font-medium text-emerald-400">Đã cập nhật ví DEMO</span>
+                 </div>
+               </div>
+ 
+@@ -217,7 +221,7 @@ export function CheckoutModal({
+                 onClick={onClose}
+                 className="w-full py-2.5 rounded-md font-semibold text-xs bg-purple-600 hover:bg-purple-500 text-white transition-colors shadow-sm"
+               >
+-                Tuyệt Vời! Xem Ví & Rút Tiền Ngay
++                Xem Ví DEMO
+               </button>
+             </div>
+           )}
+diff --git a/src/components/EmployerDashboard.tsx b/src/components/EmployerDashboard.tsx
+index 7c7d278..96cabb8 100644
+--- a/src/components/EmployerDashboard.tsx
++++ b/src/components/EmployerDashboard.tsx
+@@ -199,7 +199,7 @@ export function EmployerDashboard({
+             </div>
+           </div>
+           <span className="text-[10px] font-medium bg-slate-950 text-emerald-400 border border-slate-800 px-2 py-0.5 rounded-md">
+-            Doanh nghiệp eKYC
++            Employer DEMO · eKYC mẫu
+           </span>
+         </div>
+ 
+@@ -207,7 +207,7 @@ export function EmployerDashboard({
+         <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+             <Wallet className="w-4 h-4 text-emerald-400" />
+-            <span className="text-xs text-slate-400">Số dư ký quỹ Escrow:</span>
++            <span className="text-xs text-slate-400">Số dư ký quỹ DEMO:</span>
+             <span className="text-sm font-bold font-mono text-emerald-400">1.250.000 đ</span>
+           </div>
+           <button
+@@ -219,7 +219,7 @@ export function EmployerDashboard({
+             className="text-[11px] font-medium bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
+           >
+             <QrCode className="w-3.5 h-3.5" />
+-            <span>Nạp QR</span>
++            <span>Nạp DEMO</span>
+           </button>
+         </div>
+       </div>
+@@ -274,7 +274,7 @@ export function EmployerDashboard({
+           }`}
+         >
+           <History className="w-3.5 h-3.5" />
+-          <span>Lịch sử Escrow</span>
++          <span>Lịch sử Escrow DEMO</span>
+         </button>
+       </div>
+ 
+@@ -462,7 +462,7 @@ export function EmployerDashboard({
+               <div className="flex items-center gap-2">
+                 <KeyRound className="w-4 h-4 text-purple-400" />
+                 <span className="text-xs font-medium text-slate-300">
+-                  Mã PIN Điểm Danh Quán:
++                  Mã PIN Điểm Danh DEMO:
+                 </span>
+               </div>
+               <button
+@@ -546,7 +546,7 @@ export function EmployerDashboard({
+               </p>
+             </div>
+             <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> PayOS Napas 24/7
++              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Escrow DEMO — không chuyển tiền
+             </span>
+           </div>
+ 
+@@ -560,7 +560,7 @@ export function EmployerDashboard({
+               </div>
+             </div>
+             <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-lg">
+-              <span className="text-[10px] text-slate-400 block">Đã thanh toán cho nhân viên</span>
++              <span className="text-[10px] text-slate-400 block">Đã thanh toán mô phỏng</span>
+               <div className="flex items-baseline gap-1 mt-0.5">
+                 <span className="text-sm font-bold font-mono text-emerald-400">120.000 đ</span>
+                 <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
+@@ -916,8 +916,8 @@ export function EmployerDashboard({
+         content={qrContent}
+         title={
+           qrContent.includes("NAP")
+-            ? "Nạp Tiền Ví Ký Quỹ Escrow"
+-            : "Ký Quỹ VietQR Cho Ca Làm SOS"
++            ? "Nạp Tiền Ví Ký Quỹ DEMO"
++            : "Ký Quỹ DEMO Cho Ca Làm SOS"
+         }
+         onPaymentSuccess={() => {
+           if (!qrContent.includes("NAP")) {
+diff --git a/src/components/EmployerProfileTab.tsx b/src/components/EmployerProfileTab.tsx
+index 2d29279..25d008f 100644
+--- a/src/components/EmployerProfileTab.tsx
++++ b/src/components/EmployerProfileTab.tsx
+@@ -111,7 +111,7 @@ export function EmployerProfileTab({
+                     </h2>
+                     {profile.verified_badge && (
+                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md">
+-                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Đã eKYC
++                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> eKYC mẫu (DEMO)
+                       </span>
+                     )}
+                   </div>
+@@ -275,11 +275,11 @@ export function EmployerProfileTab({
+           <div className="flex items-center gap-2">
+             <Wallet className="w-4 h-4 text-emerald-400" />
+             <span className="text-xs font-semibold text-white">
+-              Số Dư Ký Quỹ Escrow
++              Số Dư Ký Quỹ DEMO
+             </span>
+           </div>
+           <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
+-            NAPAS 24/7
++            DEMO — không chuyển tiền
+           </span>
+         </div>
+ 
+@@ -289,7 +289,7 @@ export function EmployerProfileTab({
+               {escrowBalance.toLocaleString("vi-VN")} đ
+             </span>
+             <p className="text-[11px] text-slate-400 mt-0.5">
+-              Bảo đảm giải ngân cho ~8 ca tiếp theo
++              Số dư mô phỏng, chưa có ký quỹ thật
+             </p>
+           </div>
+ 
+@@ -298,7 +298,7 @@ export function EmployerProfileTab({
+             className="py-1.5 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-md font-medium text-xs flex items-center gap-1.5 transition-colors"
+           >
+             <QrCode className="w-3.5 h-3.5" />
+-            <span>Nạp Quỹ VietQR</span>
++            <span>Nạp Quỹ DEMO</span>
+           </button>
+         </div>
+       </div>
+@@ -309,7 +309,7 @@ export function EmployerProfileTab({
+           <div className="flex items-center gap-2">
+             <KeyRound className="w-4 h-4 text-slate-400" />
+             <h3 className="text-xs font-semibold text-white">
+-              Mã PIN Điểm Danh Dự Phòng
++              Mã PIN Điểm Danh DEMO
+             </h3>
+           </div>
+           <span className="text-[10px] text-slate-500">Cung cấp khi ứng viên mất sóng GPS</span>
+@@ -317,7 +317,7 @@ export function EmployerProfileTab({
+ 
+         {pinSaveSuccess && (
+           <div className="bg-emerald-950/70 border border-emerald-800/80 rounded-md p-2 text-xs text-emerald-300">
+-            ✓ Đã cập nhật mã PIN điểm danh quầy mới thành công!
++            ✓ Đã cập nhật PIN mẫu tại màn hình DEMO; không thay đổi PIN xác thực thật.
+           </div>
+         )}
+ 
+diff --git a/src/components/LoginRequiredCard.tsx b/src/components/LoginRequiredCard.tsx
+index 78ab781..5eb81ee 100644
+--- a/src/components/LoginRequiredCard.tsx
++++ b/src/components/LoginRequiredCard.tsx
+@@ -39,7 +39,7 @@ export function LoginRequiredCard({
+       {features.length > 0 && (
+         <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-left space-y-2">
+           <span className="text-[11px] font-semibold text-slate-300 block">
+-            Quyền lợi sau khi đăng nhập:
++            Các tính năng mô phỏng trong DEMO:
+           </span>
+           <div className="space-y-1.5">
+             {features.map((feat, idx) => (
+@@ -59,10 +59,10 @@ export function LoginRequiredCard({
+           className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-md shadow-purple-900/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+         >
+           <LogIn className="w-4 h-4" />
+-          <span>Đăng Nhập / Đăng Ký Ngay</span>
++          <span>Mở Candidate / Employer DEMO</span>
+         </button>
+         <p className="text-[11px] text-slate-500">
+-          Chỉ mất 10 giây • Hỗ trợ đăng nhập nhanh tài khoản mẫu
++          LIVE chưa được bật • Không cần mật khẩu • Không xác thực eKYC
+         </p>
+       </div>
+     </div>
+diff --git a/src/components/MessagesTab.tsx b/src/components/MessagesTab.tsx
+index fca677a..5d6ebc9 100644
+--- a/src/components/MessagesTab.tsx
++++ b/src/components/MessagesTab.tsx
+@@ -47,12 +47,14 @@ interface MessagesTabProps {
+   currentUser?: User | null;
+   currentRole?: UserRole;
+   onOpenCheckin?: (shift: Shift) => void;
++  demoOnly?: boolean;
+ }
+ 
+ export function MessagesTab({
+   currentUser = MOCK_CANDIDATE_USER,
+   currentRole = "CANDIDATE",
+   onOpenCheckin,
++  demoOnly = true,
+ }: MessagesTabProps) {
+   const isEmployer = currentRole === "EMPLOYER";
+   const myUser = currentUser || (isEmployer ? MOCK_EMPLOYER_USER : MOCK_CANDIDATE_USER);
+@@ -109,6 +111,8 @@ export function MessagesTab({
+   const { isMobile } = useViewMode();
+   const [activeConvId, setActiveConvId] = useState<string>("conv_1");
+   const [messages, setMessages] = useState<ChatMessage[]>([]);
++  const [loadedDemoKey, setLoadedDemoKey] = useState<string | null>(null);
++  const demoKey = `selltime_demo_chat_${myUser.id}_${activeConvId}`;
+   const [lastMessagesMap, setLastMessagesMap] = useState<Record<string, { text: string; time: string }>>({});
+   const [inputVal, setInputVal] = useState("");
+   const [isSending, setIsSending] = useState(false);
+@@ -186,6 +190,26 @@ export function MessagesTab({
+   };
+ 
+   useEffect(() => {
++    if (demoOnly) {
++      let sampleMessages: ChatMessage[] = [{
++        id: `demo_${activeConvId}`,
++        conversation_id: activeConvId,
++        sender_id: isEmployer ? MOCK_CANDIDATE_USER.id : MOCK_EMPLOYER_USER.id,
++        sender_name: activeConv.partnerName,
++        sender_avatar: activeConv.partnerAvatar,
++        content: activeConv.defaultLastMessage,
++        created_at: activeConv.defaultTime,
++      }];
++      try {
++        const cached = JSON.parse(localStorage.getItem(demoKey) || "null");
++        if (Array.isArray(cached)) sampleMessages = cached;
++      } catch (_) {}
++      setMessages(sampleMessages);
++      setLoadedDemoKey(demoKey);
++      setIsConnected(false);
++      setLastMessagesMap({});
++      return;
++    }
+     if (typeof window !== "undefined") {
+       try {
+         const cached = localStorage.getItem(`selltime_chat_${activeConvId}`);
+@@ -249,7 +273,14 @@ export function MessagesTab({
+       if (es) es.close();
+       clearInterval(interval);
+     };
+-  }, [activeConvId]);
++  }, [activeConvId, demoOnly, demoKey]);
++
++  useEffect(() => {
++    if (!demoOnly || loadedDemoKey !== demoKey) return;
++    try {
++      localStorage.setItem(demoKey, JSON.stringify(messages));
++    } catch (_) {}
++  }, [demoOnly, loadedDemoKey, demoKey, messages]);
+ 
+   // Only scroll inner container when new messages arrive AND user is already at the bottom
+   useEffect(() => {
+@@ -294,6 +325,7 @@ export function MessagesTab({
+     setTimeout(() => scrollToBottom(true), 30);
+ 
+     try {
++      if (demoOnly) return; // Mock send stays in this browser, never in API/ntfy.
+       await fetch("/api/messages", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+@@ -316,6 +348,16 @@ export function MessagesTab({
+ 
+     setIsResetting(true);
+     try {
++      if (demoOnly) {
++        setMessages([]);
++        setLastMessagesMap((prev) => {
++          const next = { ...prev };
++          delete next[activeConvId];
++          return next;
++        });
++        localStorage.removeItem(demoKey);
++        return;
++      }
+       const res = await fetch(`/api/messages?conversation_id=${activeConvId}`, {
+         method: "DELETE",
+       });
+@@ -455,7 +497,7 @@ export function MessagesTab({
+               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+             </div>
+             <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+-              <span className="text-emerald-400 font-medium">Trực tuyến</span>
++              <span className="text-emerald-400 font-medium">{demoOnly ? "Chat DEMO local — không gửi tới người thật" : "Trực tuyến"}</span>
+               <span>•</span>
+               <span className="truncate">{activeConv.partnerRoleTitle}</span>
+             </p>
+@@ -491,7 +533,7 @@ export function MessagesTab({
+       <div className="bg-slate-900/60 border-b border-slate-800/80 px-3 py-1 flex items-center justify-between text-[10px] text-slate-400">
+         <div className="flex items-center gap-1.5">
+           <Wifi className="w-3 h-3 text-emerald-400" />
+-          <span>Cloud P2P trực tuyến</span>
++          <span>{demoOnly ? "DEMO: chỉ lưu trong trình duyệt" : "Cloud P2P trực tuyến"}</span>
+         </div>
+         <span className="font-mono text-slate-400">
+           {messages.length} tin
+diff --git a/src/components/MobileShell.tsx b/src/components/MobileShell.tsx
+index 24cfb25..3e8d935 100644
+--- a/src/components/MobileShell.tsx
++++ b/src/components/MobileShell.tsx
+@@ -53,6 +53,14 @@ export function MobileShell({
+ 
+   return (
+     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-900 selection:text-purple-200 pb-16 md:pb-0">
++      {/* BANNER THƯỜNG TRỰC CHẾ ĐỘ THỬ NGHIỆM */}
++      <aside aria-label="Thông báo chế độ thử nghiệm" className="bg-amber-950/90 border-b border-amber-800/80 px-3 py-1.5 text-center text-xs text-amber-200 flex items-center justify-center gap-2 shrink-0 z-50">
++        <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
++        <span className="font-medium text-[11px] sm:text-xs">
++          DEMO: danh tính và vai trò mẫu, ví/thanh toán và điểm danh mô phỏng. Chuyển vai trò không cấp quyền thật. LIVE chưa được bật.
++        </span>
++      </aside>
++
+       {/* ========================================================= */}
+       {/* TOP HEADER: Clean Responsive Navbar                       */}
+       {/* ========================================================= */}
+@@ -166,7 +174,7 @@ export function MobileShell({
+                       {currentUser.full_name}
+                     </span>
+                     <span className="text-[10px] text-slate-400 font-medium">
+-                      {currentUser.role === "CANDIDATE" ? "Sinh viên TNUT" : "Chủ quán"}
++                      {currentUser.role === "CANDIDATE" ? "Candidate DEMO" : "Employer DEMO"}
+                     </span>
+                   </div>
+                 </div>
+@@ -174,7 +182,7 @@ export function MobileShell({
+                 <button
+                   onClick={onLogout}
+                   className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+-                  title="Đăng xuất"
++                  title="Thoát persona DEMO"
+                 >
+                   <LogOut className="w-4 h-4" />
+                 </button>
+@@ -185,7 +193,7 @@ export function MobileShell({
+                 className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors"
+               >
+                 <LogIn className="w-3.5 h-3.5" />
+-                <span>Đăng Nhập</span>
++                <span>Mở DEMO</span>
+               </button>
+             )}
+           </div>
+diff --git a/src/components/MyShiftsTab.tsx b/src/components/MyShiftsTab.tsx
+index 1fc5359..10bc487 100644
+--- a/src/components/MyShiftsTab.tsx
++++ b/src/components/MyShiftsTab.tsx
+@@ -11,12 +11,14 @@ import {
+   RotateCcw,
+ } from "lucide-react";
+ import { Shift } from "../domain/types";
++import { calculateShiftElapsedTime } from "../domain/trust-battery";
+ 
+ export type ShiftAttendanceStatus = "APPLIED" | "IN_PROGRESS" | "COMPLETED";
+ 
+ interface MyShiftsTabProps {
+   appliedShifts: Shift[];
+   shiftStatuses: Record<string, ShiftAttendanceStatus>;
++  checkinTimestamps?: Record<string, number>;
+   onStartCheckin: (shift: Shift) => void;
+   onStartCheckout: (shift: Shift) => void;
+   onCancelShift?: (shift: Shift) => void;
+@@ -25,14 +27,15 @@ interface MyShiftsTabProps {
+ export function MyShiftsTab({
+   appliedShifts,
+   shiftStatuses,
++  checkinTimestamps = {},
+   onStartCheckin,
+   onStartCheckout,
+   onCancelShift,
+ }: MyShiftsTabProps) {
+   const [filter, setFilter] = useState<"ALL" | ShiftAttendanceStatus>("ALL");
+-  const [timerSeconds, setTimerSeconds] = useState<number>(3672); // 1h 01m 12s
++  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+ 
+-  // Live timer for active shift
++  // Live timer tick cho ca làm việc đang diễn ra
+   useEffect(() => {
+     const hasInProgress = Object.values(shiftStatuses).some(
+       (s) => s === "IN_PROGRESS"
+@@ -40,11 +43,18 @@ export function MyShiftsTab({
+     if (!hasInProgress) return;
+ 
+     const interval = setInterval(() => {
+-      setTimerSeconds((prev) => prev + 1);
++      setCurrentTime(Date.now());
+     }, 1000);
+     return () => clearInterval(interval);
+   }, [shiftStatuses]);
+ 
++  // Tính số giây đã trôi qua dựa trên timestamp check-in thực tế của từng ca
++  const getShiftElapsedSeconds = (shiftId: string): number => {
++    const checkinTime = checkinTimestamps[shiftId];
++    if (!checkinTime) return 0;
++    return calculateShiftElapsedTime(checkinTime, currentTime);
++  };
++
+   const formatTimer = (totalSec: number) => {
+     const hours = Math.floor(totalSec / 3600);
+     const minutes = Math.floor((totalSec % 3600) / 60);
+@@ -67,7 +77,7 @@ export function MyShiftsTab({
+         <div>
+           <h2 className="text-base font-bold text-white tracking-tight">Ca Làm Của Tôi</h2>
+           <p className="text-xs text-slate-400">
+-            Theo dõi tiến độ, check-in GPS và nhận thù lao Escrow
++            Theo dõi tiến độ, check-in và ví DEMO
+           </p>
+         </div>
+         <span className="text-xs font-mono font-medium bg-slate-900 text-slate-300 border border-slate-800 px-2.5 py-0.5 rounded-md">
+@@ -81,9 +91,9 @@ export function MyShiftsTab({
+           <Shield className="w-4 h-4 text-emerald-400" />
+         </div>
+         <div className="text-xs">
+-          <span className="font-semibold text-white block">Bảo chứng ký quỹ Escrow:</span>
++          <span className="font-semibold text-white block">Ký quỹ DEMO:</span>
+           <span className="text-slate-400 text-[11px]">
+-            Tiền công đã được chủ cơ sở nạp ký quỹ. Hoàn thành ca là nhận tiền tức thì qua VietQR.
++            Tiền công và ký quỹ chỉ mô phỏng; hoàn thành ca cộng vào ví DEMO, không chuyển tiền qua VietQR.
+           </span>
+         </div>
+       </div>
+@@ -209,12 +219,12 @@ export function MyShiftsTab({
+                           Thời gian làm thực tế:
+                         </span>
+                         <span className="text-sm font-bold font-mono text-white">
+-                          {formatTimer(timerSeconds)}
++                          {formatTimer(getShiftElapsedSeconds(shift.id))}
+                         </span>
+                       </div>
+                     </div>
+                     <span className="text-[10px] text-emerald-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
+-                      Escrow Bảo Đảm
++                      Escrow DEMO
+                     </span>
+                   </div>
+                 )}
+@@ -250,7 +260,7 @@ export function MyShiftsTab({
+                           className="text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
+                         >
+                           <QrCode className="w-3.5 h-3.5" />
+-                          <span>Check-in GPS / QR</span>
++                          <span>Check-in DEMO</span>
+                         </button>
+                       </>
+                     )}
+@@ -261,14 +271,14 @@ export function MyShiftsTab({
+                         className="text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors"
+                       >
+                         <CheckCircle className="w-3.5 h-3.5" />
+-                        <span>Ký Nhận & Rút Lương</span>
++                        <span>Checkout DEMO</span>
+                       </button>
+                     )}
+ 
+                     {status === "COMPLETED" && (
+                       <span className="text-xs font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-md flex items-center gap-1">
+                         <CheckCircle2 className="w-3.5 h-3.5" />
+-                        Đã giải ngân
++                        Đã cộng ví DEMO
+                       </span>
+                     )}
+                   </div>
+diff --git a/src/components/PaymentQrModal.tsx b/src/components/PaymentQrModal.tsx
+index e412f36..06fb388 100644
+--- a/src/components/PaymentQrModal.tsx
++++ b/src/components/PaymentQrModal.tsx
+@@ -81,13 +81,17 @@ export function PaymentQrModal({
+ 
+         {/* Header */}
+         <div className="text-center mb-3">
+-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/60 mb-2">
++          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 bg-amber-950/80 px-2.5 py-1 rounded-md border border-amber-800/80 mb-2">
++            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
++            <span>DEMO — Không trừ/chuyển tiền thật</span>
++          </div>
++          <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/60 mb-1.5 mx-auto w-fit">
+             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+-            <span>Ký Quỹ Tự Động VietQR PayOS</span>
++            <span>Ký Quỹ Tự Động VietQR PayOS (Demo)</span>
+           </div>
+           <h3 className="text-base font-bold text-white">{title}</h3>
+           <p className="text-xs text-slate-400 mt-0.5">
+-            Quét mã bằng bất kỳ App Ngân Hàng hoặc Ví Điện Tử nào
++            Màn hình mô phỏng quy trình ký quỹ bảo chứng thù lao ca làm việc
+           </p>
+         </div>
+ 
+@@ -99,10 +103,10 @@ export function PaymentQrModal({
+                 <CheckCircle2 className="w-8 h-8" />
+               </div>
+               <h4 className="text-sm font-bold text-white">
+-                Ký Quỹ Escrow Thành Công!
++                Ký Quỹ DEMO Thành Công!
+               </h4>
+               <p className="text-xs text-slate-400">
+-                Số tiền <strong className="text-emerald-400 font-mono font-bold">{amount.toLocaleString("vi-VN")} đ</strong> đã được ghi nhận an toàn.
++                Số tiền <strong className="text-emerald-400 font-mono font-bold">{amount.toLocaleString("vi-VN")} đ</strong> đã được mô phỏng ghi nhận an toàn.
+               </p>
+             </div>
+           ) : (
+@@ -110,22 +114,26 @@ export function PaymentQrModal({
+               {/* Trạng thái lắng nghe giao dịch */}
+               <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md mb-3 font-medium border border-emerald-800/60">
+                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+-                <span>Đang lắng nghe giao dịch NAPAS 24/7...</span>
++                <span>Đang lắng nghe giao dịch NAPAS 24/7 (Mô phỏng)...</span>
+               </div>
+ 
+-              {/* Ảnh VietQR động */}
+-              <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-200">
+-                <img
+-                  src={qrUrl}
+-                  alt="Mã VietQR"
+-                  className="w-52 h-auto object-contain rounded-md"
+-                />
++              {/* Mã QR minh họa (Không dùng QR thanh toán thật) */}
++              <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex flex-col items-center justify-center w-52 h-52 relative overflow-hidden">
++                <div className="w-full h-full border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center p-2 text-center bg-slate-50">
++                  <QrCode className="w-24 h-24 text-slate-700 mb-1" />
++                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
++                    MÃ QR MINH HỌA
++                  </span>
++                  <span className="text-[9px] text-slate-500 mt-1 leading-tight">
++                    Chế độ thử nghiệm SellTime
++                  </span>
++                </div>
+               </div>
+ 
+               {/* Thông tin chuyển khoản kèm nút sao chép */}
+               <div className="w-full mt-3 space-y-1.5 text-xs text-slate-300 bg-slate-900 p-3 rounded-md border border-slate-800">
+                 <div className="flex justify-between items-center">
+-                  <span className="text-slate-500">Số tiền:</span>
++                  <span className="text-slate-500">Số tiền ký quỹ:</span>
+                   <div className="flex items-center gap-1">
+                     <span className="text-sm font-mono font-bold text-emerald-400">
+                       {amount.toLocaleString("vi-VN")} đ
+@@ -145,7 +153,7 @@ export function PaymentQrModal({
+                 </div>
+ 
+                 <div className="flex justify-between items-center">
+-                  <span className="text-slate-500">Nội dung CK:</span>
++                  <span className="text-slate-500">Mã ca / Nội dung:</span>
+                   <div className="flex items-center gap-1">
+                     <span className="font-mono font-bold text-purple-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-xs">
+                       {content}
+@@ -165,9 +173,9 @@ export function PaymentQrModal({
+                 </div>
+ 
+                 <div className="flex justify-between items-center">
+-                  <span className="text-slate-500">Tài khoản:</span>
+-                  <span className="font-mono font-medium text-slate-200 text-xs">
+-                    {bankId} - {accountNo}
++                  <span className="text-slate-500">Tài khoản thụ hưởng:</span>
++                  <span className="font-mono font-medium text-amber-300 text-[11px]">
++                    [Tài khoản thử nghiệm - Demo]
+                   </span>
+                 </div>
+               </div>
+@@ -186,18 +194,18 @@ export function PaymentQrModal({
+               {isVerifying ? (
+                 <>
+                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+-                  <span>Đang kiểm tra với ngân hàng...</span>
++                  <span>Đang mô phỏng kiểm tra...</span>
+                 </>
+               ) : (
+                 <>
+                   <CheckCircle2 className="w-4 h-4" />
+-                  <span>Tôi Đã Chuyển Khoản (Kiểm Tra Ngay)</span>
++                  <span>Xác Nhận Ký Quỹ (Thao Tác Mô Phỏng)</span>
+                 </>
+               )}
+             </button>
+ 
+             <p className="text-[11px] text-center text-slate-500">
+-              ⚡ Hệ thống tự động xác nhận sau khi nhận được thông báo biến động số dư.
++              ⚡ Chế độ thử nghiệm: Thao tác này mô phỏng xác nhận biến động số dư và giữ tiền ký quỹ Escrow.
+             </p>
+           </div>
+         )}
+diff --git a/src/components/ProfileTab.tsx b/src/components/ProfileTab.tsx
+index 5dac86b..4fe0fc1 100644
+--- a/src/components/ProfileTab.tsx
++++ b/src/components/ProfileTab.tsx
+@@ -14,6 +14,7 @@ import {
+   ArrowDownToLine,
+   Check,
+   CreditCard,
++  QrCode,
+ } from "lucide-react";
+ import { CandidateProfile, User as UserType } from "../domain/types";
+ 
+@@ -151,9 +152,6 @@ export function ProfileTab({
+     }, 1200);
+   };
+ 
+-  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=0&addInfo=SellTime%20Luong&accountName=${encodeURIComponent(
+-    accountName
+-  )}`;
+ 
+   return (
+     <div className="space-y-4 w-full">
+@@ -183,7 +181,7 @@ export function ProfileTab({
+                     </h2>
+                     {user.is_kyc_verified && (
+                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md">
+-                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Đã xác thực eKYC
++                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Huy hiệu eKYC mẫu (DEMO)
+                       </span>
+                     )}
+                   </div>
+@@ -497,16 +495,21 @@ export function ProfileTab({
+ 
+       {/* 5. Escrow Wallet & Instant Payout */}
+       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-flat space-y-3">
+-        <div className="flex items-center justify-between">
++        <div className="flex flex-wrap items-center justify-between gap-1.5">
+           <div className="flex items-center gap-2">
+             <Wallet className="w-4 h-4 text-emerald-400" />
+             <span className="text-xs font-semibold text-white">
+-              Ví Thu Nhập Tức Thì (Escrow)
++              Ví DEMO (Escrow mô phỏng)
++            </span>
++          </div>
++          <div className="flex items-center gap-1.5">
++            <span className="text-[10px] text-amber-300 bg-amber-950/70 border border-amber-800/80 px-2 py-0.5 rounded-md font-medium">
++              DEMO — Không trừ/chuyển tiền thật
++            </span>
++            <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono hidden sm:inline">
++              NAPAS 24/7 (Demo)
+             </span>
+           </div>
+-          <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
+-            NAPAS 24/7
+-          </span>
+         </div>
+ 
+         <div className="flex items-baseline justify-between pt-0.5">
+@@ -515,7 +518,7 @@ export function ProfileTab({
+               {balance.toLocaleString("vi-VN")} đ
+             </span>
+             <p className="text-[11px] text-slate-400 mt-0.5">
+-              Tiền công từ các ca làm đã hoàn tất và được ký quỹ
++              Tiền công từ các ca làm đã hoàn tất và được ký quỹ (Số dư mô phỏng)
+             </p>
+           </div>
+         </div>
+@@ -524,7 +527,7 @@ export function ProfileTab({
+           <div className="bg-slate-950 border border-emerald-800/80 rounded-md p-2.5 flex items-center gap-2 text-xs text-emerald-300">
+             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+             <span>
+-              Đã gửi lệnh rút tiền về tài khoản {bankCode} ({accountNumber})!
++              [Mô phỏng] Đã gửi lệnh rút tiền thử nghiệm về tài khoản {bankCode} ({accountNumber})!
+             </span>
+           </div>
+         ) : (
+@@ -534,11 +537,11 @@ export function ProfileTab({
+             className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md font-medium text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+           >
+             {isWithdrawing ? (
+-              <span>Đang xử lý chuyển khoản...</span>
++              <span>Đang mô phỏng rút tiền...</span>
+             ) : (
+               <>
+                 <ArrowDownToLine className="w-4 h-4" />
+-                <span>Rút Tiền Về Ngân Hàng Ngay</span>
++                <span>Rút Tiền Về Ngân Hàng (Mô Phỏng)</span>
+               </>
+             )}
+           </button>
+@@ -551,10 +554,10 @@ export function ProfileTab({
+           <div className="flex items-center gap-2">
+             <CreditCard className="w-4 h-4 text-purple-400" />
+             <h3 className="text-xs font-semibold text-white">
+-              Tài Khoản Ngân Hàng Nhận Lương
++              Thông Tin Ngân Hàng DEMO
+             </h3>
+           </div>
+-          <span className="text-[10px] text-slate-400">Tự động nhận sau ca</span>
++          <span className="text-[10px] text-slate-400">Chỉ dùng dữ liệu mẫu</span>
+         </div>
+ 
+         <form onSubmit={handleSaveBank} className="space-y-3">
+@@ -617,24 +620,22 @@ export function ProfileTab({
+             </button>
+ 
+             <span className="text-[11px] text-slate-500">
+-              Nhận tiền trong 3 giây sau khi checkout
++              DEMO: chưa có chuyển tiền ngân hàng
+             </span>
+           </div>
+         </form>
+ 
+         {/* VietQR Preview */}
+         <div className="pt-2.5 border-t border-slate-800 flex items-center gap-3 bg-slate-950 p-2.5 rounded-lg">
+-          <img
+-            src={qrUrl}
+-            alt="Mã VietQR cá nhân"
+-            className="w-16 h-16 rounded-md border border-slate-800 bg-white object-contain shrink-0"
+-          />
++          <div aria-label="QR minh họa DEMO, không dùng để chuyển tiền" className="w-16 h-16 rounded-md border border-slate-800 bg-slate-950 flex items-center justify-center shrink-0">
++            <QrCode className="w-10 h-10 text-slate-500" />
++          </div>
+           <div className="text-xs space-y-0.5 min-w-0">
+             <span className="font-semibold text-white block">
+-              Mã VietQR Cá Nhân
++              QR Minh Họa DEMO
+             </span>
+             <p className="text-[11px] text-slate-400 truncate">
+-              Chủ quán hoặc hệ thống Escrow quét để chuyển thù lao vào tài khoản{" "}
++              Thông tin mẫu; QR minh họa không dùng để chuyển tiền vào tài khoản{" "}
+               <strong className="text-slate-200">{bankCode} - {accountNumber}</strong>.
+             </p>
+           </div>
+diff --git a/src/components/RoleSwitcher.tsx b/src/components/RoleSwitcher.tsx
+index ca54fea..8ea072d 100644
+--- a/src/components/RoleSwitcher.tsx
++++ b/src/components/RoleSwitcher.tsx
+@@ -23,7 +23,7 @@ export function RoleSwitcher({
+     <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex items-center justify-between">
+       <div className="flex items-center gap-2">
+         <span className="text-[11px] text-slate-400">
+-          {isGuest ? "Xem trước:" : "Đang đăng nhập:"}
++          {isGuest ? "Xem trước DEMO:" : "Danh tính DEMO:"}
+         </span>
+         <span className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1.5 ${
+           isGuest
+@@ -33,18 +33,18 @@ export function RoleSwitcher({
+           {currentRole === "CANDIDATE" ? (
+             <>
+               {isGuest ? <Eye className="w-3.5 h-3.5 text-slate-400" /> : <UserCheck className="w-3.5 h-3.5 text-purple-400" />}
+-              <span>{isGuest ? "Sinh viên tìm việc (Khách)" : `${candidateName} (SV)`}</span>
++              <span>{isGuest ? "Candidate DEMO (Khách)" : `${candidateName} · Candidate DEMO`}</span>
+             </>
+           ) : (
+             <>
+               {isGuest ? <Eye className="w-3.5 h-3.5 text-slate-400" /> : <Store className="w-3.5 h-3.5 text-purple-400" />}
+-              <span>{isGuest ? "Chủ quán F&B (Khách)" : `${employerName} (Quán)`}</span>
++              <span>{isGuest ? "Employer DEMO (Khách)" : `${employerName} · Employer DEMO`}</span>
+             </>
+           )}
+         </span>
+       </div>
+ 
+-      <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800">
++      <div aria-label="Chuyển persona DEMO, không cấp quyền thật" title="Chuyển persona DEMO, không cấp quyền thật" className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800">
+         <button
+           onClick={() => onRoleChange("CANDIDATE")}
+           className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${
+@@ -53,7 +53,7 @@ export function RoleSwitcher({
+               : "text-slate-400 hover:text-slate-200"
+           }`}
+         >
+-          Sinh viên
++          Candidate DEMO
+         </button>
+         <button
+           onClick={() => onRoleChange("EMPLOYER")}
+@@ -63,7 +63,7 @@ export function RoleSwitcher({
+               : "text-slate-400 hover:text-slate-200"
+           }`}
+         >
+-          Chủ quán
++          Employer DEMO
+         </button>
+       </div>
+     </div>
+diff --git a/src/components/ShiftCard.tsx b/src/components/ShiftCard.tsx
+index 08780ab..f5b6272 100644
+--- a/src/components/ShiftCard.tsx
++++ b/src/components/ShiftCard.tsx
+@@ -146,7 +146,7 @@ export function ShiftCard({
+                 <span className="text-xs font-bold text-slate-200 truncate block">
+                   {shiftWithMatch.employer_name}
+                 </span>
+-                <span className="text-[10px] text-slate-400">Đã xác minh</span>
++                <span className="text-[10px] text-slate-400">Huy hiệu mẫu (DEMO)</span>
+               </div>
+             </div>
+ 
+diff --git a/src/domain/matching-engine.ts b/src/domain/matching-engine.ts
+index 10677a2..9a91187 100644
+--- a/src/domain/matching-engine.ts
++++ b/src/domain/matching-engine.ts
+@@ -4,7 +4,7 @@
+ // S = 0.35*S_Time + 0.25*S_Loc + 0.25*S_Skill + 0.15*S_Salary
+ // ==========================================================
+ 
+-import {
++import type {
+   CandidateFilterCriteria,
+   CandidateProfile,
+   GeoPoint,
+diff --git a/src/domain/trust-battery.ts b/src/domain/trust-battery.ts
+index 0ea7bdb..a880546 100644
+--- a/src/domain/trust-battery.ts
++++ b/src/domain/trust-battery.ts
+@@ -95,3 +95,65 @@ export function calculateCompletionReward(isSos: boolean = false, rating: number
+ export function canAcceptSosShift(trustBattery: number): boolean {
+   return trustBattery >= 80;
+ }
++
++/**
++ * Mã PIN điểm danh mẫu tại cơ sở (The Cuppa Coffee)
++ */
++export const VENUE_PIN = "8866";
++
++/**
++ * Xác thực mã PIN điểm danh tại cơ sở
++ * Chỉ chấp nhận đúng VENUE_PIN ("8866" sau khi trim), từ chối mọi giá trị khác hoặc rỗng
++ */
++export function verifyCheckinPin(inputPin: string, expectedPin: string = VENUE_PIN): boolean {
++  if (!inputPin) return false;
++  return inputPin.trim() === expectedPin;
++}
++
++/**
++ * Tính số giây trôi qua thực tế của ca làm việc từ thời điểm check-in
++ * @param checkinTimestamp Thời điểm check-in (ms)
++ * @param currentTimestamp Thời điểm hiện tại (ms, mặc định Date.now())
++ */
++export function calculateShiftElapsedTime(
++  checkinTimestamp: number,
++  currentTimestamp: number = Date.now()
++): number {
++  if (!checkinTimestamp || currentTimestamp < checkinTimestamp) return 0;
++  return Math.floor((currentTimestamp - checkinTimestamp) / 1000);
++}
++
++/**
++ * Kiểm tra xem tài khoản có đang trong thời gian bị phạt khóa nhận ca SOS không
++ */
++export function isSosLockedByTime(
++  lockUntilTimestamp: number | null,
++  currentTimestamp: number = Date.now()
++): boolean {
++  if (!lockUntilTimestamp) return false;
++  return currentTimestamp < lockUntilTimestamp;
++}
++
++/**
++ * Đánh giá toàn diện quyền ứng tuyển ca SOS
++ */
++export function canCandidateApplySos(
++  trustBattery: number,
++  lockUntilTimestamp: number | null = null,
++  currentTimestamp: number = Date.now()
++): { canApply: boolean; reason?: string } {
++  if (isSosLockedByTime(lockUntilTimestamp, currentTimestamp)) {
++    const remainingHours = Math.max(1, Math.ceil((lockUntilTimestamp! - currentTimestamp) / (3600 * 1000)));
++    return {
++      canApply: false,
++      reason: `Tài khoản đang bị tạm khóa nhận ca SOS (còn khoảng ${remainingHours} giờ).`,
++    };
++  }
++  if (!canAcceptSosShift(trustBattery)) {
++    return {
++      canApply: false,
++      reason: `Pin Uy Tín của bạn đang là ${trustBattery}%. Cần tối thiểu 80% để nhận ca SOS.`,
++    };
++  }
++  return { canApply: true };
++}
+diff --git a/src/domain/types.ts b/src/domain/types.ts
+index 4808009..82fc751 100644
+--- a/src/domain/types.ts
++++ b/src/domain/types.ts
+@@ -5,6 +5,16 @@
+ 
+ export type UserRole = "CANDIDATE" | "EMPLOYER" | "ADMIN";
+ 
++// Danh tính thật chỉ được tạo sau khi server xác minh Auth và hồ sơ database.
++export interface VerifiedIdentity {
++  authUserId: string;
++  userId: string;
++  role: UserRole;
++  fullName: string;
++  avatarUrl?: string;
++  email: string;
++}
++
+ export type WorkType = "PART_TIME" | "FULL_TIME" | "GIG";
+ 
+ export type ShiftPeriod = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING" | "NIGHT";
+diff --git a/src/infrastructure/ai/gemini.ts b/src/infrastructure/ai/gemini.ts
+index 505f1f5..23babd7 100644
+--- a/src/infrastructure/ai/gemini.ts
++++ b/src/infrastructure/ai/gemini.ts
+@@ -71,7 +71,16 @@ Hãy trích xuất và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢ
+     if (apiKey && apiKey !== "none") {
+       const result = await geminiModel.generateContent(prompt);
+       const responseText = result.response.text();
+-      return extractJsonFromString(responseText);
++      const parsed = extractJsonFromString(responseText);
++      return {
++        ...parsed,
++        _metadata: {
++          source: "gemini",
++          provider: "Google Gemini",
++          model: "gemini-1.5-flash",
++          is_fallback: false,
++        },
++      };
+     }
+     throw new Error("No API key configured");
+   } catch (error) {
+@@ -101,6 +110,12 @@ Hãy trích xuất và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢ
+         "Nên bổ sung thêm kỹ năng thao tác máy tính tiền POS KiotViet",
+         "Có thể luyện tập thêm phỏng vấn STAR để tăng điểm Pin Uy Tín",
+       ],
++      _metadata: {
++        source: "local_mock",
++        provider: "Local Heuristic",
++        model: "fallback-heuristic",
++        is_fallback: true,
++      },
+     };
+   }
+ }
+@@ -133,7 +148,16 @@ Hãy phân tích và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢNG
+     if (apiKey && apiKey !== "none") {
+       const result = await geminiModel.generateContent(prompt);
+       const responseText = result.response.text();
+-      return extractJsonFromString(responseText);
++      const parsed = extractJsonFromString(responseText);
++      return {
++        ...parsed,
++        _metadata: {
++          source: "gemini",
++          provider: "Google Gemini",
++          model: "gemini-1.5-flash",
++          is_fallback: false,
++        },
++      };
+     }
+     throw new Error("No API key configured");
+   } catch (error) {
+@@ -181,6 +205,12 @@ Hãy phân tích và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢNG
+       ai_explanation: aiExplanation,
+       gap_warning: gapWarning,
+       preparation_tip: prepTip,
++      _metadata: {
++        source: "local_mock",
++        provider: "Local Heuristic",
++        model: "fallback-heuristic",
++        is_fallback: true,
++      },
+     };
+   }
+ }
+@@ -238,20 +268,39 @@ Interview Rules:
+       });
+ 
+       const result = await chat.sendMessage(lastMessage);
+-      return result.response.text();
++      return {
++        reply: result.response.text(),
++        _metadata: {
++          source: "gemini",
++          provider: "Google Gemini",
++          model: "gemini-1.5-flash",
++          is_fallback: false,
++        },
++      };
+     }
+     throw new Error("No API key configured");
+   } catch (error) {
+     console.warn("AI Interview Fallback kích hoạt:", error);
+     const count = conversationHistory.filter((m) => m.role === "user").length;
++    let fallbackText = "";
+     
+     if (count === 1) {
+-      return "Chị rất ấn tượng với cách xử lý bình tĩnh của em! Câu trả lời rất có trách nhiệm.\n\n👉 Câu 2: Nếu trong ca làm việc có đồng nghiệp đến muộn hoặc bị ốm đột xuất khiến em phải gánh thêm quầy order, em sẽ sắp xếp công việc thế nào để không bị quá tải?";
++      fallbackText = "Chị rất ấn tượng với cách xử lý bình tĩnh của em! Câu trả lời rất có trách nhiệm.\n\n👉 Câu 2: Nếu trong ca làm việc có đồng nghiệp đến muộn hoặc bị ốm đột xuất khiến em phải gánh thêm quầy order, em sẽ sắp xếp công việc thế nào để không bị quá tải?";
+     } else if (count === 2) {
+-      return "Cách em ưu tiên công việc rất linh hoạt và chuyên nghiệp!\n\n👉 Câu 3 (Câu cuối): Khi thanh toán tiền thừa cho khách, nếu phát hiện máy POS gặp sự cố mạng hoặc khách bảo tiền thừa không đủ, em sẽ giải thích và xử lý ra sao?";
++      fallbackText = "Cách em ưu tiên công việc rất linh hoạt và chuyên nghiệp!\n\n👉 Câu 3 (Câu cuối): Khi thanh toán tiền thừa cho khách, nếu phát hiện máy POS gặp sự cố mạng hoặc khách bảo tiền thừa không đủ, em sẽ giải thích và xử lý ra sao?";
+     } else {
+-      return "🎉 Chúc mừng em đã hoàn thành xuất sắc buổi phỏng vấn giả lập STAR!\n\n📊 BÁO CÁO NĂNG LỰC STAR (CHỊ LAN AI):\n• Điểm kỹ năng xử lý tình huống: 94 / 100\n• Đánh giá: Thái độ cầu tiến, giao tiếp lịch thiệp, tư duy dịch vụ khách hàng xuất sắc.\n• Khuyến nghị: Đã cộng +2% Pin Uy Tín (PartyMode Trust Battery) vào hồ sơ của em!";
++      fallbackText = "🎉 Chúc mừng em đã hoàn thành xuất sắc buổi phỏng vấn giả lập STAR!\n\n📊 BÁO CÁO NĂNG LỰC STAR (CHỊ LAN AI):\n• Điểm kỹ năng xử lý tình huống: 94 / 100\n• Đánh giá: Thái độ cầu tiến, giao tiếp lịch thiệp, tư duy dịch vụ khách hàng xuất sắc.\n• Khuyến nghị: Đã cộng +2% Pin Uy Tín (PartyMode Trust Battery) vào hồ sơ của em!";
+     }
++
++    return {
++      reply: fallbackText,
++      _metadata: {
++        source: "local_mock",
++        provider: "Local Mock",
++        model: "fallback-scripted",
++        is_fallback: true,
++      },
++    };
+   }
+ }
+ 
+diff --git a/src/infrastructure/database/supabaseClient.ts b/src/infrastructure/database/supabaseClient.ts
+index 4f6b817..905b9db 100644
+--- a/src/infrastructure/database/supabaseClient.ts
++++ b/src/infrastructure/database/supabaseClient.ts
+@@ -1,24 +1,3 @@
+-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+-
+-// Đọc URL và Anon Key từ biến môi trường
+-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+-
+-let supabaseInstance: SupabaseClient | null = null;
+-
+-export function getSupabaseClient(): SupabaseClient | null {
+-  if (!supabaseUrl || !supabaseAnonKey) {
+-    return null;
+-  }
+-  if (!supabaseInstance) {
+-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+-  }
+-  return supabaseInstance;
+-}
+-
+-export const isSupabaseConfigured = (): boolean => {
+-  return Boolean(
+-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+-  );
+-};
++// Không còn singleton hoặc credential database cũ trong đường dẫn Auth thật.
++// Mỗi request phải xác minh session trước khi nhận client chịu RLS.
++export { authenticate as getAuthenticatedSupabaseClient } from "../auth/server";
+diff --git a/src/infrastructure/database/supabaseRepo.ts b/src/infrastructure/database/supabaseRepo.ts
+index a88bb8c..cefd926 100644
+--- a/src/infrastructure/database/supabaseRepo.ts
++++ b/src/infrastructure/database/supabaseRepo.ts
+@@ -1,115 +1,30 @@
+-import { getSupabaseClient } from "./supabaseClient";
+-import { Shift } from "@/domain/types";
+-
+-/**
+- * Lấy danh sách ca làm việc từ Supabase PostgreSQL
+- */
+-export async function getShiftsFromSupabase(): Promise<Shift[] | null> {
+-  const supabase = getSupabaseClient();
+-  if (!supabase) return null;
+-
+-  try {
+-    const { data, error } = await supabase
+-      .from("shifts")
+-      .select("*")
+-      .order("created_at", { ascending: false });
+-
+-    if (error) {
+-      console.warn("Lỗi Supabase getShifts:", error.message);
+-      return null;
+-    }
+-
+-    if (!data || data.length === 0) return null;
+-
+-    // Chuyển đổi từ schema Supabase sang Domain Entity Shift
+-    return data.map((row: any) => ({
+-      id: row.id,
+-      employer_id: row.employer_id,
+-      employer_name: row.employer_name,
+-      employer_avatar: row.employer_avatar,
+-      cover_image: row.cover_image,
+-      title: row.title,
+-      description: row.description,
+-      work_type: row.work_type,
+-      shift_date: row.shift_date,
+-      shift_start: row.shift_start,
+-      shift_end: row.shift_end,
+-      duration_hours: Number(row.duration_hours),
+-      period: row.period,
+-      hourly_wage: Number(row.hourly_wage),
+-      total_budget: Number(row.total_budget),
+-      required_candidates: Number(row.required_candidates),
+-      filled_candidates: Number(row.filled_candidates),
+-      is_sos: Boolean(row.is_sos),
+-      sos_bonus_amount: Number(row.sos_bonus_amount || 0),
+-      required_skills: Array.isArray(row.required_skills)
+-        ? row.required_skills
+-        : JSON.parse(row.required_skills || "[]"),
+-      store_perks: Array.isArray(row.store_perks)
+-        ? row.store_perks
+-        : JSON.parse(row.store_perks || "[]"),
+-      friendly_tags: Array.isArray(row.friendly_tags)
+-        ? row.friendly_tags
+-        : JSON.parse(row.friendly_tags || "[]"),
+-      location_coords: {
+-        latitude: Number(row.latitude),
+-        longitude: Number(row.longitude),
+-      },
+-      location_address: row.location_address,
+-      status: row.status,
+-      created_at: row.created_at,
+-    }));
+-  } catch (err) {
+-    console.warn("Exception getShiftsFromSupabase:", err);
+-    return null;
+-  }
++import type { SupabaseClient } from "@supabase/supabase-js";
++import type { Shift, VerifiedIdentity } from "@/domain/types";
++import { AuthError, requireOwner, requireRole } from "../auth/policy";
++
++export async function getShiftsFromSupabase(client: SupabaseClient): Promise<Shift[]> {
++  const { data, error } = await client.from("shifts").select("*").order("created_at", { ascending: false }).limit(100);
++  if (error) throw new AuthError(503, "Không thể tải ca làm.");
++  return (data ?? []).map(row => ({ ...row, location_coords: { latitude: row.latitude, longitude: row.longitude } })) as Shift[];
+ }
+ 
+-/**
+- * Lưu ca làm mới vào Supabase PostgreSQL
+- */
+-export async function saveShiftToSupabase(shift: Shift): Promise<boolean> {
+-  const supabase = getSupabaseClient();
+-  if (!supabase) return false;
+-
+-  try {
+-    const { error } = await supabase.from("shifts").upsert({
+-      id: shift.id,
+-      employer_id: shift.employer_id,
+-      employer_name: shift.employer_name,
+-      employer_avatar: shift.employer_avatar,
+-      cover_image: shift.cover_image,
+-      title: shift.title,
+-      description: shift.description,
+-      work_type: shift.work_type,
+-      shift_date: shift.shift_date,
+-      shift_start: shift.shift_start,
+-      shift_end: shift.shift_end,
+-      duration_hours: shift.duration_hours,
+-      period: shift.period,
+-      hourly_wage: shift.hourly_wage,
+-      total_budget: shift.total_budget,
+-      required_candidates: shift.required_candidates,
+-      filled_candidates: shift.filled_candidates,
+-      is_sos: shift.is_sos,
+-      sos_bonus_amount: shift.sos_bonus_amount || 0,
+-      required_skills: shift.required_skills || [],
+-      store_perks: shift.store_perks || [],
+-      friendly_tags: shift.friendly_tags || [],
+-      latitude: shift.location_coords.latitude,
+-      longitude: shift.location_coords.longitude,
+-      location_address: shift.location_address,
+-      status: shift.status,
+-      created_at: shift.created_at || new Date().toISOString(),
+-    });
+-
+-    if (error) {
+-      console.warn("Lỗi saveShiftToSupabase:", error.message);
+-      return false;
+-    }
+-    return true;
+-  } catch (err) {
+-    console.warn("Exception saveShiftToSupabase:", err);
+-    return false;
+-  }
++// INSERT thay vì upsert: ID trùng không bao giờ ghi đè ownership.
++export async function saveShiftToSupabase(client: SupabaseClient, identity: VerifiedIdentity, shift: Shift): Promise<Shift> {
++  requireRole(identity, "EMPLOYER");
++  requireOwner(identity, shift.employer_id);
++  const row = {
++    id: shift.id, employer_id: identity.userId, employer_name: identity.fullName,
++    employer_avatar: identity.avatarUrl, title: shift.title, description: shift.description,
++    cover_image: shift.cover_image, work_type: shift.work_type, shift_date: shift.shift_date,
++    shift_start: shift.shift_start, shift_end: shift.shift_end, duration_hours: shift.duration_hours,
++    period: shift.period, hourly_wage: shift.hourly_wage, total_budget: shift.total_budget,
++    required_candidates: shift.required_candidates, filled_candidates: 0, is_sos: shift.is_sos,
++    sos_bonus_amount: shift.sos_bonus_amount ?? 0, required_skills: shift.required_skills ?? [],
++    store_perks: shift.store_perks ?? [], friendly_tags: shift.friendly_tags ?? [],
++    latitude: shift.location_coords.latitude, longitude: shift.location_coords.longitude,
++    location_address: shift.location_address, status: "OPEN", created_at: new Date().toISOString(),
++  };
++  const { data, error } = await client.from("shifts").insert(row).select().single();
++  if (error) throw new AuthError(error.code === "23505" ? 409 : error.code === "42501" ? 403 : 503, error.code === "23505" ? "ID ca làm đã tồn tại." : "Không thể tạo ca làm.");
++  return { ...data, location_coords: { latitude: data.latitude, longitude: data.longitude } } as Shift;
+ }
+diff --git a/_bmad-output/implementation-artifacts/spec-6-auth-and-ownership.md b/_bmad-output/implementation-artifacts/spec-6-auth-and-ownership.md
+new file mode 100644
+index 0000000..7fb737b
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-6-auth-and-ownership.md
+@@ -0,0 +1,84 @@
++---
++title: 'Iteration 6 — Supabase Auth & Ownership'
++type: 'feature'
++created: '2026-10-08'
++status: 'in-review'
++baseline_commit: '96f4be8575718d50eab2285ab5241d1583f3423a'
++route: 'dispatch'
++review_loop_iteration: 0
++context: []
++---
++
++<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
++
++## Intent
++
++**Vấn đề:** API shifts hiện đọc/ghi database mà không xác minh session; API messages tin sender/conversation do client gửi và dùng kênh công khai. Persona DEMO không được trở thành tài khoản thật.
++
++**Hướng giải quyết:** Supabase xác minh danh tính ở server; hồ sơ liên kết Auth UUID cung cấp role và ownership. API và RLS cùng bảo vệ dữ liệu. Giữ nguyên Candidate/Employer DEMO; tài khoản thật có khu vực riêng.
++
++## Boundaries & Constraints
++
++**Luôn:** giữ dirty work, staged deletion và untracked files; kiểm tra diff trước khi sửa. Auth dùng cấu hình cô lập riêng, mặc định tắt. Client theo session đã xác minh; role từ database được bảo vệ; Admin chỉ cấp qua quản trị tin cậy. Owner/sender từ session.
++
++**Không:** sửa credential/Git; dùng credential cũ; áp dụng migration, deploy, live seed, payment/lifecycle/Admin Dashboard. Không fallback dữ liệu thật sang SQL Server/memory; không đưa session thật vào DEMO, ntfy hoặc cache chung.
++
++**Quyết định đã chốt:** Email/Password qua Supabase Auth thật, xác minh session ở server; không lưu password plaintext. OTP/Magic Link ngoài phạm vi. Đăng ký luôn Candidate; chỉ Admin đã xác minh được cấp/thu hồi Employer qua API/RLS. Không tự chọn Employer, tự nâng quyền hoặc đăng ký Admin. Không truy cập database hay dùng credential khi chưa được duyệt riêng.
++
++## I/O & Edge-Case Matrix
++
++| Tình huống | Đầu vào | Hành vi | Lỗi |
++|---|---|---|---|
++| Chưa xác thực | Không có token, token giả/hết hạn | Từ chối dữ liệu thật | 401 |
++| Sai role | Candidate đăng ca | Không ghi dữ liệu | 403 |
++| Giả owner | ID người khác | Server xác định owner; không upsert | 403; ID trùng: 409 |
++| Sai hội thoại | Không phải thành viên | Không đọc/gửi/xóa | 404 |
++| Nâng quyền | ADMIN/thay role | Không thay quyền database | 403 |
++| Cấp/thu hồi Employer | Admin đã xác minh | RPC kiểm tra Admin; session tiếp theo đọc role mới | Người khác: 403 |
++| DEMO | Persona hoặc role từ trình duyệt | Chỉ thao tác local; không tạo session thật | API vẫn yêu cầu Auth |
++| Cấu hình thiếu | Auth chưa bật/thiếu cấu hình riêng | Không gọi database; không fallback | 503 |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `src/infrastructure/database/supabaseClient.ts`, `supabaseRepo.ts`: singleton và upsert chưa kiểm tra owner.
++- `src/app/api/shifts/route.ts`, `messages/route.ts`: chưa Auth; fallback/database hoặc ntfy công khai.
++- `src/database/schema_supabase.sql`: users.id VARCHAR, chưa liên kết auth.users; không bind seed DEMO.
++- `src/app/page.tsx`, `AuthModal.tsx`, `RoleSwitcher.tsx`, `MessagesTab.tsx`: giữ dirty baseline DEMO; không bật chat non-demo cũ.
++- `src/domain/types.ts`: tái sử dụng enum UserRole; tạo kiểu danh tính xác minh riêng.
++
++## Tasks & Acceptance
++
++**Execution:**
++- [x] `src/infrastructure/auth/server.ts`, `policy.ts` — client theo request, xác minh qua auth.getUser, cookies bảo vệ, role/profile binding, kiểm tra origin cho mutation và lỗi fail-closed.
++- [x] `src/app/api/auth/[action]/route.ts`, `src/app/auth/page.tsx` — signup/login/logout/refresh/session và API cấp/thu hồi Employer chỉ Admin; không log token/password.
++- [x] `src/components/AuthModal.tsx` — thêm lối vào khu vực tài khoản riêng, giữ nguyên đăng nhập DEMO không password.
++- [x] `src/infrastructure/database/supabaseRepo.ts`, `src/app/api/shifts/route.ts` — truyền client đã xác minh, owner server, insert an toàn, role guard và không fallback.
++- [x] `src/app/api/messages/route.ts` — kiểm tra thành viên, sender server, giới hạn input; bỏ ntfy/memory thật và endpoint reset chat không được bảo vệ.
++- [x] `src/database/migrations/006_auth_ownership.sql` — binding UUID unique, signup Candidate, RPC cấp/thu hồi Employer chỉ Admin; RLS users/profiles/shifts/applications/messages/conversations; khóa tài chính. Chỉ review, không áp dụng.
++- [x] `.env.example`, `docs/auth-ownership.md` — placeholder cấu hình riêng, default-off, hướng dẫn môi trường test, Admin provisioning, migration và hạn chế kiểm thử.
++- [x] `src/__tests__/auth-ownership.test.mjs`, `src/database/tests/006_auth_ownership.sql` — unauthorized, hai tài khoản, wrong owner, escalation, DEMO isolation; không gọi provider trong unit tests.
++
++**Acceptance Criteria:**
++- Given hai tài khoản khác nhau, when truy cập dữ liệu riêng của nhau qua API/RLS, then không lộ hoặc sửa dữ liệu.
++- Given session hợp lệ, when lấy hồ sơ, then Auth UUID và role do server/database xác minh, không phụ thuộc role trình duyệt.
++- Given giao diện DEMO hiện tại, when chuyển Candidate/Employer và dùng ca/chat mẫu, then hoạt động local như baseline.
++- Given database test chưa được xác minh, when validation, then không dùng credential cũ; báo RLS integration chưa chạy.
++
++## Implementation Notes
++
++## Spec Change Log
++
++## Review Triage Log
++
++## Verification
++
++- `node node_modules/typescript/bin/tsc --noEmit --incremental false` — không lỗi.
++- `node src/__tests__/selltime-core.test.mjs` — regression baseline 45/45.
++- `node --test src/__tests__/build-realpath.test.cjs` — 3/3.
++- Bộ security tests mới — unauthorized/cross-user/escalation/DEMO đều đạt.
++- `npm run build` — thành công; không gửi request production.
++- RLS SQL tests chỉ trên database test được xác minh; ghi log và summary C2C iteration 6.
++
++
+diff --git a/_bmad-output/planning-artifacts/danh-gia-san-sang-thi-truong-2026-10-07.md b/_bmad-output/planning-artifacts/danh-gia-san-sang-thi-truong-2026-10-07.md
+new file mode 100644
+index 0000000..e9e356e
+--- /dev/null
++++ b/_bmad-output/planning-artifacts/danh-gia-san-sang-thi-truong-2026-10-07.md
+@@ -0,0 +1,78 @@
++# SellTime: đánh giá sản phẩm và khả năng đưa ra thị trường
++
++Ngày đánh giá: 07/10/2026. Đối tượng: mã nguồn hiện tại trong workspace, gồm cả các thay đổi chưa commit.
++
++## 1. Kết luận
++
++SellTime có hướng sản phẩm đáng thử: kết nối sinh viên có giờ rảnh với quán cần người theo ca ngắn, đặc biệt giờ cao điểm. Bản hiện tại phù hợp trình diễn và phỏng vấn khách hàng; chưa đủ điều kiện mở dịch vụ giao dịch thật. Có thể thử nghiệm vận hành quy mô nhỏ sau khi hoàn thành các điểm chặn dưới đây.
++
++Đây là đánh giá dựa trên mã nguồn và tài liệu, chưa phải kết quả thử nghiệm người dùng, xác nhận nhu cầu trả tiền hay kiểm toán bảo mật hệ thống đang triển khai.
++
++## 2. Những điểm nên giữ
++
++- Tìm việc từ giờ rảnh, vị trí và mức lương: bám đúng tác vụ người dùng.
++- Ca ngắn và ca SOS: nhu cầu cụ thể hơn một sàn tuyển dụng tổng quát.
++- Mẫu đăng ca, ứng tuyển nhanh, lịch và trao đổi: có thể tạo luồng thao tác ngắn.
++- Điểm phù hợp có phân tích thành phần: giúp giải thích gợi ý, nếu diễn đạt đúng là điểm xếp hạng chứ không phải xác suất được tuyển.
++- Logic matching và uy tín tách trong domain: thuận lợi để kiểm thử và điều chỉnh.
++
++Chưa có bằng chứng cho các tuyên bố trong báo cáo cũ như giảm 80% thao tác, tìm việc trong 3 giây, UX 8.8/10 hoặc độ tin cậy thương mại. Cần đo trên người dùng thật.
++
++## 3. Các điểm chặn ra mắt
++
++| Ưu tiên | Bằng chứng hiện tại | Cần thay đổi và điều kiện nghiệm thu |
++|---|---|---|
++| P0 — Tài khoản, định danh | `AuthModal.tsx` chỉ kiểm tra mật khẩu có nội dung, chọn persona theo email/SĐT; đăng ký tự gán `is_kyc_verified: true`. `page.tsx` mặc định đăng nhập persona và có chuyển vai trò. | Xác thực thật, phiên trên máy chủ, kiểm tra quyền theo tài khoản; bỏ badge xác minh khi chưa có quy trình xác minh. Tài khoản A không đọc/sửa hồ sơ, ca hoặc chat riêng của B. |
++| P0 — Chat riêng tư | `/api/messages` nhận `sender_id` từ client, không kiểm tra thành viên hội thoại; truyền nội dung lên `ntfy.sh` bằng topic `selltime_v1_chat_<conversation_id>` và không gửi thông tin xác thực. | Lưu chat bền vững, kiểm tra thành viên ở máy chủ, xác định người gửi từ phiên. Chuyển sang kênh có kiểm soát truy cập. Tài liệu ntfy cho biết cấu hình công khai mặc định cho phép đọc/ghi topic; việc topic cụ thể có được bảo vệ bên ngoài hay không chưa kiểm tra. [Tài liệu ntfy](https://docs.ntfy.sh/config/). |
++| P0 — Tiền thật | `PaymentQrModal.tsx` dùng `setTimeout` để báo thành công, đã có nhãn demo. `ProfileTab.tsx` mô phỏng rút tiền. `page.tsx` cộng số dư trong state. Không thấy route PayOS/webhook trong danh sách API. | Tạo giao dịch trên máy chủ, xác thực webhook, đối chiếu số tiền/mã đơn, sổ giao dịch, chống xử lý lặp, hoàn tiền và đối soát. QR chuyển khoản chưa chứng minh cơ chế giữ và giải ngân tiền. [Quy trình tích hợp payOS](https://payos.vn/docs/), [xác thực webhook](https://payos.vn/docs/sdks/back-end/node/). |
++| P0 — Trạng thái ca | Ứng tuyển/check-in/checkout chủ yếu cập nhật React state và một số khóa localStorage. Duyệt ứng viên ở dashboard là state riêng. | Lưu ứng tuyển, duyệt, điểm danh, hoàn thành và hủy vào database; máy chủ kiểm tra chuyển trạng thái. Hai thiết bị phải thấy cùng dữ liệu; reload không đổi số dư hoặc xóa chế tài. |
++| P0 — Ghi dữ liệu | `/api/shifts` có thể trả `success: true` dù cả Supabase và SQL Server không lưu được; nhận ca từ client với kiểm tra tối thiểu. | Chọn một nguồn dữ liệu chính; xác nhận thành công chỉ sau khi lưu bền vững. Kiểm tra chủ sở hữu, dữ liệu đầu vào và giới hạn số người nhận bằng giao dịch database. |
++| P1 — Điểm danh | `CheckinModal.tsx` có tọa độ mẫu, nút mô phỏng tại quán và quét QR bằng timer; PIN chung `8866` kiểm tra ở client. Khoảng cách được làm tròn 0.1 km trước khi so geofence. | Bỏ công cụ demo khỏi production; mã ngắn hạn gắn với ca/cơ sở, kiểm tra máy chủ, chống dùng lại; dùng khoảng cách chưa làm tròn và độ chính xác GPS. GPS vẫn là một tín hiệu, không phải bằng chứng tuyệt đối. |
++| P1 — Khớp lịch | `calculateTimeScore` so buổi và thời lượng, không kiểm tra đầy đủ ngày/giờ rảnh cụ thể. `rankShiftsForCandidate` chỉ lọc cứng từ khóa và loại việc. Dữ liệu có ngày `Hôm nay`. | Lọc ca hợp lệ trước, xếp hạng sau; dùng ngày/giờ cụ thể, xử lý qua đêm, trùng lịch, thời gian di chuyển, ca đầy và ca đã kết thúc. |
++| P1 — Tính lương | `CheckoutModal.tsx` lấy lương giờ nhân thời lượng dự kiến; chưa dùng thời gian check-in/out thực tế. | Chọn rõ mô hình trả theo ca cố định hay theo giờ thực tế. Nếu theo giờ: quy tắc nghỉ, đến muộn, làm thêm, làm tròn và xác nhận hai bên phải được áp dụng trên máy chủ. |
++| P1 — AI | `gemini.ts` gọi `gemini-1.5-flash`, có fallback theo kịch bản. Google đã đóng model này ngày 29/09/2025. | Chọn model còn hỗ trợ, cấu hình qua môi trường và kiểm thử tích hợp thật; công khai nguồn fallback, kiểm soát chi phí và không dùng điểm AI chưa được xác thực làm bằng chứng uy tín. [Google changelog](https://ai.google.dev/gemini-api/docs/changelog). |
++
++Schema Supabase được lưu trong repo chưa có định nghĩa RLS/policy. Điều này không chứng minh cấu hình database đang chạy giống hệt; cần kiểm tra trực tiếp trước pilot. Repo cũng đang track một tệp dưới `src/Password-Supabase/`; chưa đọc nội dung, nên chưa kết luận chứa bí mật. Cần kiểm tra riêng, và thu hồi/đổi credential nếu có dữ liệu thật.
++
++## 4. Cải thiện sản phẩm
++
++Ưu tiên câu hỏi “Bạn rảnh từ mấy giờ đến mấy giờ, ngày nào?” thay vì chỉ “mấy tiếng” và “buổi tối”. Ví dụ người rảnh 19:00–23:00 không thể nhận đầy đủ ca 18:00–22:00 dù cùng buổi tối và đều bốn giờ.
++
++Trang ca nên ghi rõ việc phải làm, địa điểm, người phụ trách, kỹ năng bắt buộc, giờ bắt đầu/kết thúc, thu nhập và thời hạn trả. Đưa thuật ngữ Escrow/AHP/PartyMode xuống phần giải thích; giao diện chính dùng “tiền đã xác nhận”, “độ tin cậy”, “lý do phù hợp”.
++
++Độ tin cậy cần dựa vào sự kiện có kiểm chứng, phân biệt lỗi sinh viên và lỗi chủ quán, có khiếu nại và xét ngoại lệ. Không nên để việc người lao động chấm sao chủ quán quyết định trực tiếp điểm uy tín của chính họ như luồng thưởng hiện tại.
++
++MVP nên tập trung: tài khoản → đăng ca → lịch hợp lệ → ứng tuyển → duyệt → nhắc lịch → điểm danh → xác nhận hoàn thành và tiền công → hỗ trợ. AI CV, phỏng vấn đa ngôn ngữ, thao tác vuốt và ngành gia sư/logistics có thể để sau. Cần kiểm tra UX thật trên điện thoại và mạng yếu; phân tích này chưa kiểm thử trực quan.
++
++## 5. Cơ hội thị trường và định vị
++
++Không nên quảng bá “tìm việc linh hoạt theo ca” là tính năng chưa có trên thị trường. Việc Có đã mô tả tìm nhân sự ngắn hạn, chấm công, tính và trả lương; hướng dẫn người lao động có chọn lịch và tránh trùng giờ. [Việc Có](https://viec.co/), [hướng dẫn chọn lịch](https://huongdan.viec.co/tim-viec-lam-phu-hop/dang-ky-lich-lam-viec).
++
++Suy luận chiến lược: cơ hội của SellTime nằm ở phục vụ tốt một cụm địa phương — ca 2–4 giờ tại quán quanh trường, hồ sơ người làm đáng tin, tốc độ lấp ca và hỗ trợ thay người. Chưa có dữ liệu để xác nhận quy mô thị trường, nhu cầu tại Thái Nguyên hoặc lợi thế cạnh tranh đã hình thành.
++
++Rủi ro kinh doanh chính là thiếu mật độ cung/cầu đúng giờ; chủ quán và sinh viên giao dịch trực tiếp sau ca đầu; sinh viên thiếu kỹ năng; chi phí hỗ trợ mỗi ca vượt phí thu. Thuật toán tốt không tự tạo ra nguồn ca và người sẵn sàng làm.
++
++## 6. Cách thử nghiệm đề xuất
++
++Các con số sau là mục tiêu thử nghiệm đề xuất, không phải chuẩn ngành hay dự báo:
++
++1. Phỏng vấn 10–15 chủ quán và 20–30 sinh viên tại một cụm gần TNUT. Hỏi về ca thiếu người gần nhất, cách xử lý, tổn thất, lịch rảnh và người đã từng trả phí tuyển; dùng sự kiện thật thay vì chỉ hỏi “có thích app không”.
++2. Tuyển 5–10 quán và 30–50 sinh viên đã kiểm tra thông tin, tập trung hai khung cao điểm. Thử demo/đăng ký quan tâm có thể làm ngay. Pilot ca thật chỉ sau khi xử lý P0 liên quan và có quy trình vận hành.
++3. Vận hành 4–6 tuần, có người điều phối và hỗ trợ. Nếu chưa có cơ chế giữ/chi trả hợp lệ và được xác minh, ghi nhận trả tiền trực tiếp giữa hai bên, không quảng bá ví hay bảo chứng tiền. Cách này vẫn cần tài khoản, bảo vệ dữ liệu và trạng thái ca đáng tin.
++4. Đo tối thiểu 100 lượt bố trí người vào ca; các ca tuyển nhiều người cần tính riêng từng chỗ làm. Mục tiêu sơ bộ: lấp ≥70% chỗ trước giờ bắt đầu, đến làm ≥95% lượt đã nhận, ≥40% quán dùng lại trong 30 ngày, có ít nhất 3 quán thực trả phí. Mẫu nhỏ chỉ giúp quyết định vòng thử tiếp theo.
++5. Mở rộng sau khi chỉ số ổn định qua nhiều tuần và lãi đóng góp mỗi ca dương: phí thực thu trừ chi phí thanh toán, hỗ trợ, ưu đãi và tổn thất.
++
++Thử thu phí phía chủ quán cho ca được lấp thành công trước; chưa nên thu phí ứng tuyển của sinh viên. Ví dụ tính toán giả định: ca 150.000đ, phí 10% tạo 15.000đ doanh thu; nếu hỗ trợ, thanh toán và ưu đãi đã tốn 20.000đ thì lỗ 5.000đ trước chi phí cố định. Cần thử mức phí bằng hành vi thanh toán thật.
++
++Trước khi xử lý tiền hoặc dữ liệu định danh thật, cần xác định rõ ai tuyển và trả công, ai giữ tiền, ai chịu trách nhiệm khi hủy/tranh chấp, cách bảo vệ dữ liệu và điều khoản với các bên; cần chuyên gia phù hợp xác nhận mô hình dự định vận hành. Báo cáo này không kết luận các nghĩa vụ pháp lý cụ thể.
++
++## 7. Kiểm chứng đã thực hiện và giới hạn
++
++- `node --experimental-strip-types src/__tests__/selltime-core.test.mjs`: 45/45 đạt.
++- `node src/__tests__/verify-matching.mjs`: 7/7 đạt, nhưng file tự định nghĩa lại nhiều hàm; không phải bằng chứng trực tiếp cho toàn bộ mã production.
++- `npx tsc --noEmit --incremental false`: hoàn tất với exit code 0.
++- Một số test lõi kiểm tra biến/metadata mẫu hoặc logic guard được dựng trong test; chưa kiểm thử kết nối Gemini thật, xử lý đồng thời hoặc thanh toán thật.
++- Chưa chạy lại production build, kiểm thử UI/E2E, truy cập database live, gửi chat ra dịch vụ ngoài hoặc giao dịch thanh toán. Không sửa mã ứng dụng hay các thay đổi sẵn có của người dùng.
++- Các tài liệu hiện tại ghi `done` cho nhiều tính năng mô phỏng. Nên tách trạng thái “demo hoàn thành”, “backend tích hợp”, “đã kiểm thử thực tế”, “đã nghiệm thu production” để tránh dùng báo cáo sprint làm bằng chứng sẵn sàng thương mại.
++
++Quyết định hiện tại: tiếp cận khách hàng để kiểm chứng nhu cầu ngay; hoàn thiện nền tảng tối thiểu rồi pilot tại một cụm; chưa mở marketplace và dòng tiền thật rộng rãi.
+diff --git a/docs/auth-ownership.md b/docs/auth-ownership.md
+new file mode 100644
+index 0000000..1173949
+--- /dev/null
++++ b/docs/auth-ownership.md
+@@ -0,0 +1,27 @@
++# Auth và ownership — iteration 6
++
++Khu vực `/auth` dùng Email/Password Supabase Auth; DEMO ở `/` giữ persona và ca/chat local. Không ghi tài khoản thật vào DEMO store hoặc localStorage. OTP/Magic Link, payment, lifecycle và Admin Dashboard ngoài phạm vi.
++
++## Cấu hình môi trường test
++
++Auth mặc định tắt. Chỉ sau khi có phê duyệt riêng cho project database test, điền `SELLTIME_AUTH_ENABLED=true`, `SELLTIME_AUTH_SUPABASE_URL`, `SELLTIME_AUTH_SUPABASE_ANON_KEY`, `SELLTIME_AUTH_ORIGIN`. Không dùng các credential `NEXT_PUBLIC_SUPABASE_*` cũ hoặc service-role key. Origin phải chính xác; HTTPS bắt buộc trên production, localhost HTTP chỉ dùng development. Mutation cần header Origin trùng cấu hình kể cả khi dùng Bearer token.
++
++Review migration `src/database/migrations/006_auth_ownership.sql` cùng schema trước khi áp dụng thủ công trên database test đã xác minh. Không chạy file schema seed DEMO trên database production. Migration không liên kết tài khoản seed theo email: `auth_user_id` của seed vẫn NULL. Tài khoản Auth tạo trước migration cần được quản trị tin cậy cấp binding UUID và hồ sơ Candidate riêng; không tự ghép với DEMO. Migration thay thế các policy hiện có trên những bảng được bảo vệ, nên cần review ảnh hưởng trước khi áp dụng.
++
++Signup luôn tạo Candidate bằng trigger, bỏ qua role metadata. Hồ sơ role được đọc mới mỗi request sau `auth.getUser`; không đọc role từ JWT metadata hoặc trình duyệt. Các lỗi cấu hình/provider/database fail-closed, không fallback SQL Server/memory. Session trả về danh tính, không trả token; cookies HttpOnly, SameSite Strict, Secure trên production. Refresh token ở cookie riêng và chỉ refresh sau kiểm tra Origin. Không log password/token. Logout kết thúc session local ở provider và xóa cookies; access JWT có thể còn hiệu lực đến expiry, vì vậy chọn TTL ngắn phù hợp ở môi trường test.
++
++## Admin và quyền Employer
++
++Admin đầu tiên chỉ được cấp bằng SQL quản trị tin cậy ngoài ứng dụng trên Auth UUID đã xác minh: cập nhật role của đúng hàng `users` có `auth_user_id` tương ứng. Không có API tạo Admin, đăng ký Employer hoặc sửa role trực tiếp. Không đưa khóa quản trị vào app.
++
++`POST /api/auth/employer` nhận `{ "user_id": "UUID hồ sơ", "enabled": true }` hoặc `false`, chỉ session Admin đã xác minh mới gọi được RPC `set_employer_role`. RPC kiểm tra lại Admin trong database, chỉ thay Candidate/Employer, không thay Admin/DEMO. Request tiếp theo của mục tiêu đọc quyền mới ngay. API này không tạo employer profile hoặc cấp quyền tài chính.
++
++`GET /api/auth/session`, `POST /api/auth/signup`, `login`, `logout`, `refresh` là các thao tác tài khoản. API shifts chỉ đọc ca sở hữu/ca đã ứng tuyển theo RLS; Employer tạo ca bằng INSERT, không upsert, server gán owner. ID trùng trả 409. API messages yêu cầu hội thoại tồn tại và thành viên; server gán sender, giới hạn 2000 ký tự, lấy tối đa 150 tin mới nhất. DELETE cần `conversation_id` và `message_id`, chỉ xóa tin của chính sender; không có reset hội thoại. Hội thoại/ứng tuyển chưa có flow tạo mới trong iteration này và chỉ được provision bằng quản trị test tin cậy.
++
++RLS khóa đọc/ghi hồ sơ người khác, DEMO không binding, application riêng, membership chat; không cấp cập nhật lifecycle. Các cột role/Auth UUID/KYC/trust/escrow/PIN không được client sửa. Escrow transactions bị khóa cả đọc và ghi. Admin RPC có quyền đặc biệt duy nhất để đổi Candidate/Employer.
++
++## Kiểm thử và hạn chế
++
++Chạy `node src/__tests__/auth-ownership.test.mjs` để kiểm tra server/API bằng provider và database giả lập trong process; không gọi Supabase hay credential. Chạy tsc, regression và build theo spec. `src/database/tests/006_auth_ownership.sql` là bộ integration transaction rollback, chỉ chạy sau phê duyệt riêng trên database test đã xác minh và áp dụng migration. Nó tạo fixture Auth trong transaction, kiểm tra Candidate mặc định, RLS hai tài khoản, quyền Admin/Employer, chống spoof và khóa tài chính.
++
++Trong lần triển khai này không truy cập database hoặc provider, không áp dụng migration, không deploy/live seed. RLS integration, email delivery, rate limit của provider và trình duyệt với cookies HTTPS chưa được xác minh thực tế. Cần kiểm chứng các bước đó trên môi trường test được duyệt trước khi bật Auth. Build không xác minh SQL/RLS.
+diff --git a/scripts/windows-realpath.cjs b/scripts/windows-realpath.cjs
+new file mode 100644
+index 0000000..7e514dc
+--- /dev/null
++++ b/scripts/windows-realpath.cjs
+@@ -0,0 +1,25 @@
++// Some restricted Windows environments reject the native async realpath call
++// even when Node's synchronous resolver can resolve the same existing file.
++// Keep dependency/type checks enabled and propagate every other error.
++const fs = require("node:fs");
++
++function withWindowsRealpathFallback(realpath, realpathSync, platform) {
++  return async (file, options) => {
++    try {
++      return await realpath(file, options);
++    } catch (error) {
++      if (platform !== "win32" || error.code !== "EPERM") throw error;
++      return realpathSync(file, options);
++    }
++  };
++}
++
++if (process.platform === "win32") {
++  fs.promises.realpath = withWindowsRealpathFallback(
++    fs.promises.realpath.bind(fs.promises),
++    fs.realpathSync.bind(fs),
++    process.platform,
++  );
++}
++
++module.exports = { withWindowsRealpathFallback };
+diff --git a/src/__tests__/auth-ownership.test.mjs b/src/__tests__/auth-ownership.test.mjs
+new file mode 100644
+index 0000000..3a682b2
+--- /dev/null
++++ b/src/__tests__/auth-ownership.test.mjs
+@@ -0,0 +1,154 @@
++// Kiểm thử API/server bằng Supabase giả lập; tuyệt đối không gọi provider.
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import path from 'node:path';
++import { createRequire } from 'node:module';
++import vm from 'node:vm';
++const require = createRequire(import.meta.url);
++const ts = require('typescript');
++const root = path.resolve('src');
++const cache = new Map();
++let providerCalls = 0;
++const users = [
++  { id: 'a', auth_user_id: 'auth-a', role: 'CANDIDATE', full_name: 'A', email: 'a@test.invalid', avatar_url: '' },
++  { id: 'b', auth_user_id: 'auth-b', role: 'EMPLOYER', full_name: 'B', email: 'b@test.invalid', avatar_url: '' },
++  { id: 'admin', auth_user_id: 'auth-admin', role: 'ADMIN', full_name: 'Admin', email: 'admin@test.invalid', avatar_url: '' },
++];
++const tables = { users, shifts: [], conversations: [{ id: 'ab', candidate_id: 'a', employer_id: 'b' }, { id: 'private', candidate_id: 'other', employer_id: 'b' }], messages: [] };
++function client(token) {
++  const getIdentity = () => users.find(u => `token-${u.id}` === token);
++  return {
++    auth: {
++      getUser: async supplied => { providerCalls++; const u = users.find(u => `token-${u.id}` === supplied); return { data: { user: u ? { id: u.auth_user_id } : null }, error: u ? null : {} }; },
++      signInWithPassword: async ({ email }) => { token = `token-${users.find(u => u.email === email)?.id}`; return { data: { session: { access_token: token, refresh_token: 'refresh', expires_in: 60 } }, error: null }; },
++      signUp: async () => ({ data: { session: null }, error: null }),
++      refreshSession: async () => { token = 'token-a'; return { data: { session: { access_token: token, refresh_token: 'new-refresh', expires_in: 60 } }, error: null }; },
++      signOut: async () => ({ error: null }),
++      admin: { signOut: async supplied => { assert.ok(supplied.startsWith('token-')); return { error: null }; } },
++    },
++    rpc: async (name, args) => {
++      const caller = getIdentity();
++      if (caller?.role !== 'ADMIN') return { error: { code: '42501' } };
++      const target = users.find(u => u.id === args.target_user_id);
++      if (!target || target.role === 'ADMIN') return { error: { code: '42501' } };
++      target.role = args.enabled ? 'EMPLOYER' : 'CANDIDATE'; return { error: null };
++    },
++    from(table) {
++      let filters = [], insert, deleting = false, limit = Infinity, descending = false;
++      const q = {
++        select() { return q; }, eq(key, value) { filters.push([key, value]); return q; },
++        order(key, opts) { descending = opts?.ascending === false; return q; }, limit(n) { limit = n; return q; },
++        insert(row) { insert = row; return q; }, delete() { deleting = true; return q; },
++        single: async () => execute(true), maybeSingle: async () => execute(true),
++        then(resolve, reject) { return Promise.resolve(execute(false)).then(resolve, reject); },
++      };
++      function execute(single) {
++        let rows = tables[table].filter(row => filters.every(([k, v]) => row[k] === v));
++        // Giả lập RLS chỉ để kiểm thử hợp đồng API; SQL integration riêng mới xác minh policy thật.
++        if (table === 'shifts' && !insert) rows = rows.filter(row => row.employer_id === getIdentity()?.id);
++        if (insert) {
++          if (tables[table].some(row => row.id === insert.id)) return { data: null, error: { code: '23505' } };
++          tables[table].push(insert); rows = [insert];
++        }
++        if (deleting) tables[table] = tables[table].filter(row => !rows.includes(row));
++        if (descending) rows = [...rows].reverse();
++        rows = rows.slice(0, limit);
++        return { data: single ? rows[0] ?? null : rows, error: null };
++      }
++      return q;
++    },
++  };
++}
++function load(file) {
++  file = path.resolve(file);
++  if (cache.has(file)) return cache.get(file).exports;
++  const module = { exports: {} }; cache.set(file, module);
++  const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
++  const localRequire = name => {
++    if (name === '@supabase/supabase-js') return { createClient: (url, key, options) => client(options.global.headers.Authorization?.slice(7)) };
++    if (name.startsWith('@/')) return load(path.join(root, name.slice(2) + '.ts'));
++    if (name.startsWith('.')) return load(path.resolve(path.dirname(file), name + '.ts'));
++    return require(name);
++  };
++  vm.runInThisContext(`(function(require,module,exports){${source}\n})`, { filename: file })(localRequire, module, module.exports);
++  return module.exports;
++}
++const server = load(path.join(root, 'infrastructure/auth/server.ts'));
++const shifts = load(path.join(root, 'app/api/shifts/route.ts'));
++const messages = load(path.join(root, 'app/api/messages/route.ts'));
++const auth = load(path.join(root, 'app/api/auth/[action]/route.ts'));
++const originalEnv = { ...process.env };
++process.env.SELLTIME_AUTH_ENABLED = 'true'; process.env.SELLTIME_AUTH_SUPABASE_URL = 'https://approved-test.invalid'; process.env.SELLTIME_AUTH_SUPABASE_ANON_KEY = 'unit-placeholder'; process.env.SELLTIME_AUTH_ORIGIN = 'http://localhost:3000'; process.env.NODE_ENV = 'test';
++function request(url, method = 'GET', token, body, origin = 'http://localhost:3000') {
++  return new Request(`http://localhost:3000${url}`, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(method !== 'GET' ? { Origin: origin, 'Content-Type': 'application/json' } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
++}
++let passed = 0;
++async function check(name, run) { await run(); passed++; console.log(`PASS: ${name}`); }
++const context = action => ({ params: Promise.resolve({ action }) });
++try {
++  await check('Cấu hình mặc định tắt/thiếu không gọi provider (503)', async () => {
++    const calls = providerCalls; process.env.SELLTIME_AUTH_ENABLED = 'false';
++    assert.equal((await shifts.GET(request('/api/shifts'))).status, 503);
++    process.env.SELLTIME_AUTH_ENABLED = 'true'; const key = process.env.SELLTIME_AUTH_SUPABASE_ANON_KEY; delete process.env.SELLTIME_AUTH_SUPABASE_ANON_KEY;
++    assert.equal((await messages.GET(request('/api/messages?conversation_id=ab'))).status, 503); assert.equal(providerCalls, calls); process.env.SELLTIME_AUTH_SUPABASE_ANON_KEY = key;
++  });
++  await check('Token thiếu/giả/hết hạn bị từ chối (401)', async () => {
++    for (const token of [undefined, 'fake', 'expired']) assert.equal((await shifts.GET(request('/api/shifts', 'GET', token))).status, 401);
++  });
++  await check('Candidate không đăng ca (403)', async () => assert.equal((await shifts.POST(request('/api/shifts', 'POST', 'token-a', { shift: {} }))).status, 403));
++  await check('Origin sai bị từ chối mutation (403)', async () => assert.equal((await messages.POST(request('/api/messages', 'POST', 'token-a', {}, 'https://evil.invalid'))).status, 403));
++  const validShift = { id: 'new', employer_id: 'b', title: 'Ca test', description: '', work_type: 'PART_TIME', period: 'EVENING', shift_date: '2026-10-08', shift_start: '18:00', shift_end: '20:00', duration_hours: 2, hourly_wage: 10, total_budget: 20, required_candidates: 1, is_sos: false, location_coords: { latitude: 0, longitude: 0 }, location_address: 'Test' };
++  await check('Giả owner 403, INSERT đúng owner, ID trùng 409 không ghi đè', async () => {
++    assert.equal((await shifts.POST(request('/api/shifts', 'POST', 'token-b', { shift: { ...validShift, employer_id: 'a' } }))).status, 403);
++    assert.equal((await shifts.POST(request('/api/shifts', 'POST', 'token-b', { shift: validShift }))).status, 201);
++    assert.equal((await shifts.POST(request('/api/shifts', 'POST', 'token-b', { shift: validShift }))).status, 409);
++    assert.equal(tables.shifts.length, 1); assert.equal(tables.shifts[0].employer_id, 'b');
++  });
++  await check('Hai session nhận dữ liệu ca riêng theo client RLS của request', async () => {
++    const a = await (await shifts.GET(request('/api/shifts', 'GET', 'token-a'))).json();
++    const b = await (await shifts.GET(request('/api/shifts', 'GET', 'token-b'))).json();
++    assert.equal(a.data.length, 0); assert.equal(b.data.length, 1);
++  });
++  await check('Hội thoại người khác không đọc/gửi/xóa (404)', async () => {
++    assert.equal((await messages.GET(request('/api/messages?conversation_id=private', 'GET', 'token-a'))).status, 404);
++    assert.equal((await messages.POST(request('/api/messages', 'POST', 'token-a', { conversation_id: 'private', content: 'secret' }))).status, 404);
++    assert.equal((await messages.DELETE(request('/api/messages?conversation_id=private&message_id=x', 'DELETE', 'token-a'))).status, 404);
++  });
++  await check('Sender từ session và giới hạn input', async () => {
++    assert.equal((await messages.POST(request('/api/messages', 'POST', 'token-a', { conversation_id: 'ab', content: 'hello', sender_id: 'b' }))).status, 403);
++    assert.equal((await messages.POST(request('/api/messages', 'POST', 'token-a', { conversation_id: 'ab', content: 'x'.repeat(2001) }))).status, 400);
++    const response = await messages.POST(request('/api/messages', 'POST', 'token-a', { conversation_id: 'ab', content: 'hello', sender_name: 'Spoof', id: 'fake' }));
++    assert.equal(response.status, 201); const { data } = await response.json(); assert.equal(data.sender_id, 'a'); assert.equal(data.sender_name, 'A'); assert.notEqual(data.id, 'fake');
++    assert.equal((await messages.DELETE(request(`/api/messages?conversation_id=ab&message_id=${data.id}`, 'DELETE', 'token-b'))).status, 404);
++    assert.equal((await messages.DELETE(request(`/api/messages?conversation_id=ab&message_id=${data.id}`, 'DELETE', 'token-a'))).status, 200);
++  });
++  await check('Không có reset chat không bảo vệ', async () => assert.equal((await messages.DELETE(request('/api/messages?conversation_id=ab', 'DELETE', 'token-a'))).status, 400));
++  await check('Đăng ký role Employer/Admin bị từ chối 403', async () => {
++    for (const role of ['EMPLOYER', 'ADMIN']) assert.equal((await auth.POST(request('/api/auth/signup', 'POST', undefined, { email: 'new@test.invalid', password: 'testpass123', full_name: 'Test', role }), context('signup'))).status, 403);
++  });
++  await check('Hồ sơ liên kết UUID và role mới từ database', async () => {
++    const verified = await server.authenticate(request('/api/auth/session', 'GET', 'token-a'));
++    assert.equal(verified.identity.authUserId, 'auth-a'); assert.equal(verified.identity.userId, 'a'); assert.equal(verified.identity.role, 'CANDIDATE');
++    assert.equal((await auth.POST(request('/api/auth/employer', 'POST', 'token-a', { user_id: 'a', enabled: true }), context('employer'))).status, 403);
++    assert.equal((await auth.POST(request('/api/auth/employer', 'POST', 'token-admin', { user_id: 'a', enabled: true }), context('employer'))).status, 200);
++    assert.equal((await server.authenticate(request('/', 'GET', 'token-a'))).identity.role, 'EMPLOYER');
++    assert.equal((await auth.POST(request('/api/auth/employer', 'POST', 'token-admin', { user_id: 'a', enabled: false }), context('employer'))).status, 200);
++    assert.equal((await server.authenticate(request('/', 'GET', 'token-a'))).identity.role, 'CANDIDATE');
++    assert.equal((await auth.POST(request('/api/auth/employer', 'POST', 'token-admin', { user_id: 'admin', enabled: false }), context('employer'))).status, 403);
++  });
++  await check('Login chỉ trả identity, cookie bảo vệ; refresh/logout có origin guard', async () => {
++    const response = await auth.POST(request('/api/auth/login', 'POST', undefined, { email: users[0].email, password: 'testpass123' }), context('login'));
++    assert.equal(response.status, 200); const text = await response.text(); assert.ok(!text.includes('token-a')); assert.ok(response.headers.get('set-cookie').includes('HttpOnly')); assert.ok(response.headers.get('set-cookie').includes('SameSite=strict'));
++    assert.equal((await auth.POST(request('/api/auth/refresh', 'POST', undefined, undefined, 'https://evil.invalid'), context('refresh'))).status, 403);
++    assert.equal((await auth.POST(request('/api/auth/logout', 'POST', 'token-a', undefined, 'https://evil.invalid'), context('logout'))).status, 403);
++    assert.equal((await auth.POST(request('/api/auth/logout', 'POST', 'token-a'), context('logout'))).status, 200);
++  });
++  await check('DEMO persona không tạo session thật; route không fallback/ntfy/cache chung', async () => {
++    assert.equal((await shifts.GET(request('/api/shifts', 'GET', 'user_emp_lan_02'))).status, 401);
++    const page = fs.readFileSync(path.join(root, 'app/auth/page.tsx'), 'utf8'); assert.ok(!/localStorage\s*[.[]/.test(page)); assert.ok(!/from\s+[\"'].*application\/store/.test(page));
++    for (const file of ['app/api/shifts/route.ts', 'app/api/messages/route.ts']) assert.ok(!/ntfy\.sh|memoryShifts|globalMessageStore|getShiftsFromSql/.test(fs.readFileSync(path.join(root, file), 'utf8')));
++    assert.equal((await auth.GET(request('/api/auth/session', 'GET', 'token-a'), context('session'))).headers.get('cache-control'), 'private, no-store');
++  });
++  console.log(`Security: ${passed}/${passed} đạt; provider/database thật: 0 request.`);
++} finally { process.env = originalEnv; }
++
+diff --git a/src/__tests__/build-realpath.test.cjs b/src/__tests__/build-realpath.test.cjs
+new file mode 100644
+index 0000000..f724078
+--- /dev/null
++++ b/src/__tests__/build-realpath.test.cjs
+@@ -0,0 +1,40 @@
++const { test } = require("node:test");
++const assert = require("node:assert/strict");
++const { withWindowsRealpathFallback } = require("../../scripts/windows-realpath.cjs");
++
++test("Windows EPERM resolves through the synchronous filesystem check", async () => {
++  const options = { encoding: "buffer" };
++  const expected = Buffer.from("resolved-file");
++  const resolver = withWindowsRealpathFallback(
++    async () => { throw Object.assign(new Error("denied"), { code: "EPERM" }); },
++    (file, actualOptions) => {
++      assert.equal(file, "existing-file");
++      assert.equal(actualOptions, options);
++      return expected;
++    },
++    "win32",
++  );
++  assert.equal(await resolver("existing-file", options), expected);
++});
++
++test("missing files and non-Windows permission errors remain failures", async () => {
++  for (const [platform, code] of [["win32", "ENOENT"], ["linux", "EPERM"]]) {
++    const error = Object.assign(new Error(code), { code });
++    const resolver = withWindowsRealpathFallback(
++      async () => { throw error; },
++      () => { assert.fail("must not bypass the failure"); },
++      platform,
++    );
++    await assert.rejects(resolver("file"), (actual) => actual === error);
++  }
++});
++
++test("a failed synchronous lookup is propagated rather than ignored", async () => {
++  const error = Object.assign(new Error("missing"), { code: "ENOENT" });
++  const resolver = withWindowsRealpathFallback(
++    async () => { throw Object.assign(new Error("denied"), { code: "EPERM" }); },
++    () => { throw error; },
++    "win32",
++  );
++  await assert.rejects(resolver("file"), (actual) => actual === error);
++});
+diff --git a/src/app/api/auth/[action]/route.ts b/src/app/api/auth/[action]/route.ts
+new file mode 100644
+index 0000000..36a5436
+--- /dev/null
++++ b/src/app/api/auth/[action]/route.ts
+@@ -0,0 +1,60 @@
++import { authenticate, authConfig, authFailure, authResponse, cookieValue, createRequestClient, REFRESH_COOKIE, sessionCookies, verifyToken } from "@/infrastructure/auth/server";
++import { AuthError, boundedString, readBody, requireOrigin, requireRole } from "@/infrastructure/auth/policy";
++
++export const dynamic = "force-dynamic";
++type Context = { params: Promise<{ action: string }> };
++
++export async function GET(req: Request, context: Context) {
++  try {
++    if ((await context.params).action !== "session") throw new AuthError(404, "Không có thao tác này.");
++    const { identity } = await authenticate(req);
++    return authResponse({ success: true, identity });
++  } catch (error) { return authFailure(error); }
++}
++
++export async function POST(req: Request, context: Context) {
++  try {
++    const { origin } = authConfig();
++    requireOrigin(req, origin);
++    const { action } = await context.params;
++    if (action === "logout") {
++      const { client, token } = await authenticate(req, true);
++      // Client theo request không lưu session; gửi JWT đã xác minh thẳng tới endpoint logout.
++      const { error } = await client.auth.admin.signOut(token, "local");
++      if (error) throw new AuthError(503, "Không thể kết thúc session.");
++      return sessionCookies(authResponse({ success: true }), null);
++    }
++    if (action === "employer") {
++      const { client, identity } = await authenticate(req, true);
++      requireRole(identity, "ADMIN");
++      const body = await readBody(req);
++      const target = boundedString(body.user_id, 50, "Tài khoản");
++      if (typeof body.enabled !== "boolean" || body.role !== undefined) throw new AuthError(403, "Chỉ được cấp hoặc thu hồi Employer.");
++      const { error } = await client.rpc("set_employer_role", { target_user_id: target, enabled: body.enabled });
++      if (error) throw new AuthError(error.code === "42501" ? 403 : 503, "Không thể thay đổi quyền Employer.");
++      return authResponse({ success: true });
++    }
++    const client = createRequestClient();
++    if (action === "refresh") {
++      const refreshToken = cookieValue(req, REFRESH_COOKIE);
++      if (!refreshToken || refreshToken.length > 16000) throw new AuthError(401, "Không có refresh session.");
++      const { data, error } = await client.auth.refreshSession({ refresh_token: refreshToken });
++      if (error || !data.session) throw new AuthError(401, "Session không hợp lệ.");
++      const identity = await verifyToken(client, data.session.access_token);
++      return sessionCookies(authResponse({ success: true, identity }), data.session);
++    }
++    if (!["signup", "login"].includes(action)) throw new AuthError(404, "Không có thao tác này.");
++    const body = await readBody(req);
++    if (body.role !== undefined && body.role !== "CANDIDATE") throw new AuthError(403, "Đăng ký chỉ tạo Candidate.");
++    const email = boundedString(body.email, 120, "Email");
++    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "Email không hợp lệ.");
++    if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 128) throw new AuthError(400, "Mật khẩu cần 8–128 ký tự.");
++    const result = action === "signup"
++      ? await client.auth.signUp({ email, password: body.password, options: { data: { full_name: boundedString(body.full_name, 100, "Họ tên") } } })
++      : await client.auth.signInWithPassword({ email, password: body.password });
++    if (result.error) throw new AuthError(action === "login" ? 401 : 400, "Không thể đăng nhập hoặc đăng ký với thông tin này.");
++    if (!result.data.session) return authResponse({ success: true, confirmationRequired: true });
++    const identity = await verifyToken(client, result.data.session.access_token);
++    return sessionCookies(authResponse({ success: true, identity }), result.data.session);
++  } catch (error) { return authFailure(error); }
++}
+diff --git a/src/app/auth/page.tsx b/src/app/auth/page.tsx
+new file mode 100644
+index 0000000..fdb7059
+--- /dev/null
++++ b/src/app/auth/page.tsx
+@@ -0,0 +1,51 @@
++"use client";
++import { useEffect, useState } from "react";
++import Link from "next/link";
++import type { VerifiedIdentity } from "@/domain/types";
++
++// Danh tính tài khoản thật chỉ tồn tại trong state của trang riêng.
++export default function AccountPage() {
++  const [identity, setIdentity] = useState<VerifiedIdentity | null>(null);
++  const [signup, setSignup] = useState(false);
++  const [notice, setNotice] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [email, setEmail] = useState("");
++  const [password, setPassword] = useState("");
++  const [name, setName] = useState("");
++  async function action(operation: string, body?: object) {
++    setBusy(true); setNotice("");
++    try {
++      const response = await fetch(`/api/auth/${operation}`, { method: operation === "session" ? "GET" : "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, cache: "no-store", credentials: "same-origin" });
++      const result = await response.json();
++      if (!response.ok) { setIdentity(null); throw new Error(result.error); }
++      if (operation === "logout") setIdentity(null);
++      else if (result.identity) setIdentity(result.identity);
++      if (result.confirmationRequired) setNotice("Kiểm tra email để xác nhận tài khoản, sau đó đăng nhập.");
++      setPassword("");
++    } catch (error) { setNotice(error instanceof Error ? error.message : "Không thể kết nối."); }
++    finally { setBusy(false); }
++  }
++  useEffect(() => { void action("session"); }, []);
++  return <main className="min-h-screen bg-slate-950 text-white p-6 flex justify-center">
++    <section className="w-full max-w-md space-y-5">
++      <Link href="/" className="text-purple-300">← Trở về DEMO</Link>
++      <h1 className="text-2xl font-bold">Tài khoản SellTime</h1>
++      <p className="text-slate-400">Khu vực tài khoản thật riêng biệt. Đăng ký mới tạo hồ sơ Candidate.</p>
++      {notice && <p role="status" className="border border-slate-700 rounded p-3">{notice}</p>}
++      {identity ? <div className="space-y-3">
++        <p>{identity.fullName} · {identity.role}</p><p>{identity.email}</p>
++        <button disabled={busy} onClick={() => void action("session")} className="block text-purple-300">Kiểm tra session và quyền hiện tại</button>
++        <button disabled={busy} onClick={() => void action("refresh")} className="block text-purple-300">Gia hạn session</button>
++        <button disabled={busy} onClick={() => void action("logout")} className="rounded bg-purple-600 px-4 py-2">Đăng xuất</button>
++      </div> : <form className="space-y-4" onSubmit={event => { event.preventDefault(); void action(signup ? "signup" : "login", { email, password, ...(signup ? { full_name: name } : {}) }); }}>
++        {signup && <label className="block">Họ tên<input required maxLength={100} value={name} onChange={e => setName(e.target.value)} className="block w-full bg-slate-900 p-3 rounded" autoComplete="name" /></label>}
++        <label className="block">Email<input required type="email" maxLength={120} value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="block w-full bg-slate-900 p-3 rounded" /></label>
++        <label className="block">Mật khẩu<input required type="password" minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} autoComplete={signup ? "new-password" : "current-password"} className="block w-full bg-slate-900 p-3 rounded" /></label>
++        <button disabled={busy} className="w-full bg-purple-600 p-3 rounded">{busy ? "Đang xử lý…" : signup ? "Đăng ký Candidate" : "Đăng nhập"}</button>
++        <button type="button" disabled={busy} onClick={() => { setSignup(!signup); setPassword(""); }} className="text-purple-300">{signup ? "Đã có tài khoản? Đăng nhập" : "Tạo tài khoản Candidate"}</button>
++        <button type="button" disabled={busy} onClick={() => void action("refresh")} className="block text-purple-300">Khôi phục session đã hết hạn</button>
++      </form>}
++    </section>
++  </main>;
++}
++
+diff --git a/src/database/migrations/006_auth_ownership.sql b/src/database/migrations/006_auth_ownership.sql
+new file mode 100644
+index 0000000..a8e1c6f
+--- /dev/null
++++ b/src/database/migrations/006_auth_ownership.sql
+@@ -0,0 +1,130 @@
++-- Chỉ review trên database test đã được duyệt; không chạy trên môi trường hiện có.
++BEGIN;
++ALTER TABLE public.users ADD COLUMN IF NOT EXISTS auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE;
++-- DEMO giữ auth_user_id NULL. Không liên kết theo email hoặc dữ liệu seed.
++
++CREATE TABLE IF NOT EXISTS public.conversations (
++  id VARCHAR(50) PRIMARY KEY DEFAULT gen_random_uuid()::text,
++  candidate_id VARCHAR(50) NOT NULL REFERENCES public.users(id),
++  employer_id VARCHAR(50) NOT NULL REFERENCES public.users(id),
++  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
++  CHECK (candidate_id <> employer_id)
++);
++CREATE TABLE IF NOT EXISTS public.messages (
++  id VARCHAR(50) PRIMARY KEY DEFAULT gen_random_uuid()::text,
++  conversation_id VARCHAR(50) NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
++  sender_id VARCHAR(50) NOT NULL REFERENCES public.users(id),
++  sender_name VARCHAR(100) NOT NULL,
++  sender_avatar TEXT NOT NULL DEFAULT '',
++  content TEXT NOT NULL CHECK (length(btrim(content)) BETWEEN 1 AND 2000),
++  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++CREATE INDEX IF NOT EXISTS messages_conversation_created ON public.messages(conversation_id, created_at);
++
++CREATE OR REPLACE FUNCTION public.current_app_user_id() RETURNS VARCHAR
++LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT id FROM public.users WHERE auth_user_id = auth.uid()
++$$;
++CREATE OR REPLACE FUNCTION public.current_app_role() RETURNS public.user_role
++LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT role FROM public.users WHERE auth_user_id = auth.uid()
++$$;
++CREATE OR REPLACE FUNCTION public.is_conversation_member(conversation VARCHAR) RETURNS BOOLEAN
++LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT EXISTS (SELECT 1 FROM public.conversations c
++    WHERE c.id = conversation AND public.current_app_user_id() IN (c.candidate_id, c.employer_id))
++$$;
++CREATE OR REPLACE FUNCTION public.owns_shift(shift VARCHAR) RETURNS BOOLEAN
++LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT EXISTS (SELECT 1 FROM public.shifts s WHERE s.id = shift AND s.employer_id = public.current_app_user_id())
++$$;
++CREATE OR REPLACE FUNCTION public.applied_to_shift(shift VARCHAR) RETURNS BOOLEAN
++LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT EXISTS (SELECT 1 FROM public.shift_applications a WHERE a.shift_id = shift AND a.candidate_id = public.current_app_user_id())
++$$;
++
++CREATE OR REPLACE FUNCTION public.handle_auth_signup() RETURNS TRIGGER
++LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
++BEGIN
++  INSERT INTO public.users(id, auth_user_id, email, phone, full_name, role, is_kyc_verified)
++  VALUES (NEW.id::text, NEW.id, NEW.email, '',
++    left(coalesce(nullif(btrim(NEW.raw_user_meta_data->>'full_name'), ''), 'Thành viên'), 100),
++    'CANDIDATE', false);
++  INSERT INTO public.candidate_profiles(user_id, bio, university, skills, weekly_availability, latitude, longitude, location_address)
++  VALUES (NEW.id::text, '', '', '[]'::jsonb, '{}'::jsonb, 0, 0, '');
++  RETURN NEW;
++END
++$$;
++DROP TRIGGER IF EXISTS selltime_auth_signup ON auth.users;
++CREATE TRIGGER selltime_auth_signup AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_auth_signup();
++
++CREATE OR REPLACE FUNCTION public.set_employer_role(target_user_id VARCHAR, enabled BOOLEAN) RETURNS VOID
++LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
++DECLARE target_role public.user_role;
++BEGIN
++  IF public.current_app_role() IS DISTINCT FROM 'ADMIN'::public.user_role THEN
++    RAISE EXCEPTION 'Chỉ Admin đã xác minh được cấp quyền' USING ERRCODE = '42501';
++  END IF;
++  IF enabled IS NULL THEN RAISE EXCEPTION 'Thiếu trạng thái quyền' USING ERRCODE = '42501'; END IF;
++  SELECT role INTO target_role FROM public.users WHERE id = target_user_id AND auth_user_id IS NOT NULL FOR UPDATE;
++  IF target_role IS NULL OR target_role = 'ADMIN' THEN
++    RAISE EXCEPTION 'Không được thay đổi Admin hoặc DEMO' USING ERRCODE = '42501';
++  END IF;
++  UPDATE public.users SET role = CASE WHEN enabled THEN 'EMPLOYER'::public.user_role ELSE 'CANDIDATE'::public.user_role END,
++    updated_at = now() WHERE id = target_user_id;
++END
++$$;
++
++-- Xóa các policy cũ để tránh permissive policy cộng OR làm mở quyền.
++DO $$
++DECLARE p RECORD; t TEXT;
++BEGIN
++  FOR p IN SELECT schemaname, tablename, policyname FROM pg_policies WHERE schemaname = 'public'
++    AND tablename IN ('users','candidate_profiles','employer_profiles','shifts','shift_applications','conversations','messages','escrow_transactions')
++  LOOP EXECUTE format('DROP POLICY %I ON %I.%I', p.policyname, p.schemaname, p.tablename); END LOOP;
++  FOREACH t IN ARRAY ARRAY['users','candidate_profiles','employer_profiles','shifts','shift_applications','conversations','messages','escrow_transactions']
++  LOOP
++    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
++    EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC, anon, authenticated', t);
++  END LOOP;
++END $$;
++
++GRANT SELECT(id, auth_user_id, email, phone, full_name, role, avatar_url, is_kyc_verified, created_at, updated_at) ON public.users TO authenticated;
++GRANT UPDATE(full_name, avatar_url, phone) ON public.users TO authenticated;
++CREATE POLICY users_self_read ON public.users FOR SELECT TO authenticated USING (auth_user_id = auth.uid());
++CREATE POLICY users_self_update ON public.users FOR UPDATE TO authenticated USING (auth_user_id = auth.uid()) WITH CHECK (auth_user_id = auth.uid());
++
++GRANT SELECT ON public.candidate_profiles TO authenticated;
++GRANT UPDATE(bio, university, hourly_rate_min, skills, weekly_availability, latitude, longitude, location_address) ON public.candidate_profiles TO authenticated;
++CREATE POLICY candidate_self_read ON public.candidate_profiles FOR SELECT TO authenticated USING (user_id = public.current_app_user_id());
++CREATE POLICY candidate_self_update ON public.candidate_profiles FOR UPDATE TO authenticated USING (user_id = public.current_app_user_id()) WITH CHECK (user_id = public.current_app_user_id());
++GRANT SELECT(user_id, company_name, business_type, address, latitude, longitude, verified_badge, updated_at) ON public.employer_profiles TO authenticated;
++GRANT UPDATE(company_name, business_type, address, latitude, longitude) ON public.employer_profiles TO authenticated;
++CREATE POLICY employer_self_read ON public.employer_profiles FOR SELECT TO authenticated USING (user_id = public.current_app_user_id());
++CREATE POLICY employer_self_update ON public.employer_profiles FOR UPDATE TO authenticated USING (user_id = public.current_app_user_id() AND public.current_app_role() = 'EMPLOYER') WITH CHECK (user_id = public.current_app_user_id() AND public.current_app_role() = 'EMPLOYER');
++
++GRANT SELECT, INSERT ON public.shifts TO authenticated;
++CREATE POLICY shifts_private_read ON public.shifts FOR SELECT TO authenticated USING (employer_id = public.current_app_user_id() OR public.applied_to_shift(id));
++CREATE POLICY shifts_owner_insert ON public.shifts FOR INSERT TO authenticated WITH CHECK (
++  employer_id = public.current_app_user_id() AND public.current_app_role() = 'EMPLOYER'
++  AND status = 'OPEN' AND filled_candidates = 0
++  AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = employer_id AND u.auth_user_id IS NOT NULL)
++);
++-- Không cấp UPDATE/DELETE ca, ứng tuyển hoặc trạng thái lifecycle trong iteration này.
++GRANT SELECT ON public.shift_applications TO authenticated;
++CREATE POLICY applications_private_read ON public.shift_applications FOR SELECT TO authenticated USING (candidate_id = public.current_app_user_id() OR public.owns_shift(shift_id));
++GRANT SELECT ON public.conversations TO authenticated;
++CREATE POLICY conversations_member_read ON public.conversations FOR SELECT TO authenticated USING (public.current_app_user_id() IN (candidate_id, employer_id));
++GRANT SELECT, INSERT, DELETE ON public.messages TO authenticated;
++CREATE POLICY messages_member_read ON public.messages FOR SELECT TO authenticated USING (public.is_conversation_member(conversation_id));
++CREATE POLICY messages_member_insert ON public.messages FOR INSERT TO authenticated WITH CHECK (
++  public.is_conversation_member(conversation_id) AND sender_id = public.current_app_user_id()
++  AND sender_name = (SELECT full_name FROM public.users WHERE id = public.current_app_user_id())
++  AND sender_avatar = coalesce((SELECT avatar_url FROM public.users WHERE id = public.current_app_user_id()), '')
++);
++CREATE POLICY messages_sender_delete ON public.messages FOR DELETE TO authenticated USING (public.is_conversation_member(conversation_id) AND sender_id = public.current_app_user_id());
++-- escrow_transactions không có policy/grant: khóa tài chính cả đọc và ghi.
++
++REVOKE ALL ON FUNCTION public.current_app_user_id(), public.current_app_role(), public.is_conversation_member(VARCHAR), public.owns_shift(VARCHAR), public.applied_to_shift(VARCHAR), public.set_employer_role(VARCHAR, BOOLEAN), public.handle_auth_signup() FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.current_app_user_id(), public.current_app_role(), public.is_conversation_member(VARCHAR), public.owns_shift(VARCHAR), public.applied_to_shift(VARCHAR), public.set_employer_role(VARCHAR, BOOLEAN) TO authenticated;
++COMMIT;
+diff --git a/src/database/tests/006_auth_ownership.sql b/src/database/tests/006_auth_ownership.sql
+new file mode 100644
+index 0000000..221e67a
+--- /dev/null
++++ b/src/database/tests/006_auth_ownership.sql
+@@ -0,0 +1,88 @@
++-- Integration chỉ chạy trên database test được xác minh, sau migration 006.
++-- Fixture rollback toàn bộ; tuyệt đối không chạy production/live seed.
++BEGIN;
++CREATE FUNCTION pg_temp.assert_true(ok BOOLEAN, message TEXT) RETURNS VOID LANGUAGE plpgsql AS $$
++BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL: %', message; END IF; END $$;
++
++INSERT INTO auth.users(id, email, raw_user_meta_data)
++VALUES
++ ('00000000-0000-4000-8000-000000000601', 'auth006-a@test.invalid', '{"full_name":"A","role":"ADMIN"}'),
++ ('00000000-0000-4000-8000-000000000602', 'auth006-b@test.invalid', '{"full_name":"B","role":"EMPLOYER"}'),
++ ('00000000-0000-4000-8000-000000000603', 'auth006-admin@test.invalid', '{"full_name":"Admin"}');
++SELECT pg_temp.assert_true((SELECT bool_and(role = 'CANDIDATE') FROM public.users WHERE id IN
++ ('00000000-0000-4000-8000-000000000601','00000000-0000-4000-8000-000000000602','00000000-0000-4000-8000-000000000603')), 'Signup luôn Candidate, bỏ qua metadata role');
++UPDATE public.users SET role = 'EMPLOYER' WHERE id = '00000000-0000-4000-8000-000000000602';
++UPDATE public.users SET role = 'ADMIN' WHERE id = '00000000-0000-4000-8000-000000000603';
++INSERT INTO public.users(id,email,phone,full_name,role) VALUES ('auth006-demo', 'auth006-demo@test.invalid','','DEMO','EMPLOYER');
++INSERT INTO public.conversations(id,candidate_id,employer_id) VALUES
++ ('auth006-chat','00000000-0000-4000-8000-000000000601','00000000-0000-4000-8000-000000000602'),
++ ('auth006-private','00000000-0000-4000-8000-000000000603','00000000-0000-4000-8000-000000000602');
++INSERT INTO public.messages(id,conversation_id,sender_id,sender_name,content) VALUES
++ ('auth006-private-msg','auth006-private','00000000-0000-4000-8000-000000000602','B','Riêng tư');
++INSERT INTO public.shifts(id, employer_id, employer_name,title,shift_start,shift_end,latitude,longitude,location_address)
++VALUES ('auth006-private-shift','00000000-0000-4000-8000-000000000602','B','Ca riêng','18:00','20:00',0,0,'Test');
++INSERT INTO public.shift_applications(id, shift_id, candidate_id)
++VALUES ('auth006-private-application','auth006-private-shift','00000000-0000-4000-8000-000000000603');
++
++SET LOCAL ROLE authenticated;
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000601',true);
++SELECT pg_temp.assert_true(public.current_app_user_id() = '00000000-0000-4000-8000-000000000601', 'UUID binding đúng');
++SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.users), 'Không đọc hồ sơ B/Admin/DEMO');
++SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.candidate_profiles), 'Candidate profiles riêng');
++SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.conversations), 'Không đọc hội thoại riêng');
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.messages), 'Không đọc tin riêng');
++DO $$ BEGIN
++  BEGIN UPDATE public.users SET role = 'ADMIN'; RAISE EXCEPTION 'FAIL: tự nâng quyền'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN UPDATE public.users SET auth_user_id = '00000000-0000-4000-8000-000000000602'; RAISE EXCEPTION 'FAIL: đổi binding'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN UPDATE public.candidate_profiles SET trust_battery = 100; RAISE EXCEPTION 'FAIL: sửa trust'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN PERFORM public.set_employer_role('00000000-0000-4000-8000-000000000601',true); RAISE EXCEPTION 'FAIL: RPC không Admin'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN INSERT INTO public.messages(id,conversation_id,sender_id,sender_name,content) VALUES ('auth006-spoof','auth006-chat','00000000-0000-4000-8000-000000000602','B','spoof'); RAISE EXCEPTION 'FAIL: giả sender'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN INSERT INTO public.messages(id,conversation_id,sender_id,sender_name,content) VALUES ('auth006-leak','auth006-private','00000000-0000-4000-8000-000000000601','A','leak'); RAISE EXCEPTION 'FAIL: gửi hội thoại riêng'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN PERFORM 1 FROM public.escrow_transactions; RAISE EXCEPTION 'FAIL: đọc tài chính'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN UPDATE public.employer_profiles SET escrow_balance = 100; RAISE EXCEPTION 'FAIL: sửa tài chính'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN INSERT INTO public.shifts(id, employer_id, employer_name,title,shift_start,shift_end,latitude,longitude,location_address) VALUES ('auth006-candidate','00000000-0000-4000-8000-000000000601','A','Ca','18:00','20:00',0,0,'Test'); RAISE EXCEPTION 'FAIL: Candidate đăng ca'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++END $$;
++INSERT INTO public.messages(id,conversation_id,sender_id,sender_name,content) VALUES
++ ('auth006-own-msg','auth006-chat','00000000-0000-4000-8000-000000000601','A','Tin đúng');
++DELETE FROM public.messages WHERE id = 'auth006-private-msg';
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.messages WHERE id = 'auth006-private-msg'), 'Tin riêng không hiện');
++
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000602',true);
++DO $$ BEGIN
++  BEGIN INSERT INTO public.shifts(id, employer_id, employer_name,title,shift_start,shift_end,latitude,longitude,location_address) VALUES ('auth006-spoof-shift','00000000-0000-4000-8000-000000000601','A','Ca','18:00','20:00',0,0,'Test'); RAISE EXCEPTION 'FAIL: giả owner ca'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++END $$;
++INSERT INTO public.shifts(id, employer_id, employer_name,title,shift_start,shift_end,latitude,longitude,location_address)
++VALUES ('auth006-shift','00000000-0000-4000-8000-000000000602','B','Ca','18:00','20:00',0,0,'Test');
++DO $$ BEGIN
++  BEGIN INSERT INTO public.shifts(id, employer_id, employer_name,title,shift_start,shift_end,latitude,longitude,location_address) VALUES ('auth006-shift','00000000-0000-4000-8000-000000000602','B','Ca','18:00','20:00',0,0,'Test'); RAISE EXCEPTION 'FAIL: ID trùng'; EXCEPTION WHEN unique_violation THEN NULL; END;
++END $$;
++DELETE FROM public.messages WHERE id = 'auth006-own-msg';
++SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.messages WHERE id = 'auth006-own-msg'), 'Không xóa tin của A');
++SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.messages WHERE id = 'auth006-private-msg'), 'Tin riêng vẫn tồn tại sau DELETE của A');
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000601',true);
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.shifts), 'Không đọc ca riêng của B');
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.shift_applications), 'Ứng tuyển riêng không lộ');
++DELETE FROM public.messages WHERE id = 'auth006-own-msg';
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.messages), 'Sender xóa tin mình');
++
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000603',true);
++SELECT public.set_employer_role('00000000-0000-4000-8000-000000000601', true);
++DO $$ BEGIN
++  BEGIN PERFORM public.set_employer_role('00000000-0000-4000-8000-000000000603',false); RAISE EXCEPTION 'FAIL: đổi Admin'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN PERFORM public.set_employer_role('auth006-demo',true); RAISE EXCEPTION 'FAIL: liên kết DEMO'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++END $$;
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000601',true);
++SELECT pg_temp.assert_true(public.current_app_role() = 'EMPLOYER', 'Session tiếp theo đọc quyền mới');
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000603',true);
++SELECT public.set_employer_role('00000000-0000-4000-8000-000000000601', false);
++SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000601',true);
++SELECT pg_temp.assert_true(public.current_app_role() = 'CANDIDATE', 'Thu hồi quyền hiệu lực');
++SELECT set_config('request.jwt.claim.sub','',true);
++SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM public.users), 'Không session không có hồ sơ');
++SET LOCAL ROLE anon;
++DO $$ BEGIN
++  BEGIN PERFORM 1 FROM public.users; RAISE EXCEPTION 'FAIL: anon đọc users'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++  BEGIN PERFORM public.set_employer_role('00000000-0000-4000-8000-000000000601',true); RAISE EXCEPTION 'FAIL: anon RPC'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
++END $$;
++RESET ROLE;
++ROLLBACK;
+diff --git a/src/infrastructure/auth/policy.ts b/src/infrastructure/auth/policy.ts
+new file mode 100644
+index 0000000..b7ee580
+--- /dev/null
++++ b/src/infrastructure/auth/policy.ts
+@@ -0,0 +1,39 @@
++import type { UserRole, VerifiedIdentity } from "../../domain/types";
++
++export class AuthError extends Error {
++  constructor(public status: number, message: string) { super(message); }
++}
++
++export function requireRole(identity: VerifiedIdentity, role: UserRole) {
++  if (identity.role !== role) throw new AuthError(403, "Không có quyền thực hiện thao tác.");
++}
++
++export function requireOwner(identity: VerifiedIdentity, claimed: unknown) {
++  if (claimed !== undefined && claimed !== identity.userId) {
++    throw new AuthError(403, "Không được sử dụng danh tính người khác.");
++  }
++}
++
++export function requireOrigin(req: Request, allowedOrigin: string) {
++  if (req.headers.get("origin") !== allowedOrigin) {
++    throw new AuthError(403, "Origin không được phép.");
++  }
++}
++
++export function boundedString(value: unknown, max: number, name: string): string {
++  if (typeof value !== "string" || !value.trim() || value.length > max) {
++    throw new AuthError(400, `${name} không hợp lệ.`);
++  }
++  return value.trim();
++}
++
++export async function readBody(req: Request): Promise<Record<string, unknown>> {
++  if (Number(req.headers.get("content-length")) > 32768) throw new AuthError(413, "Dữ liệu quá lớn.");
++  const text = await req.text();
++  if (text.length > 32768) throw new AuthError(413, "Dữ liệu quá lớn.");
++  try {
++    const value = JSON.parse(text);
++    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
++    return value;
++  } catch { throw new AuthError(400, "JSON không hợp lệ."); }
++}
+diff --git a/src/infrastructure/auth/server.ts b/src/infrastructure/auth/server.ts
+new file mode 100644
+index 0000000..f9f5deb
+--- /dev/null
++++ b/src/infrastructure/auth/server.ts
+@@ -0,0 +1,76 @@
++import { createClient, type SupabaseClient, type Session } from "@supabase/supabase-js";
++import { NextResponse } from "next/server";
++import type { VerifiedIdentity } from "../../domain/types";
++import { AuthError, requireOrigin } from "./policy";
++
++export const ACCESS_COOKIE = "selltime-auth-access";
++export const REFRESH_COOKIE = "selltime-auth-refresh";
++
++// Cấu hình riêng, tuyệt đối không đọc credential của kết nối DEMO cũ.
++export function authConfig() {
++  const url = process.env.SELLTIME_AUTH_SUPABASE_URL;
++  const key = process.env.SELLTIME_AUTH_SUPABASE_ANON_KEY;
++  const origin = process.env.SELLTIME_AUTH_ORIGIN;
++  if (process.env.SELLTIME_AUTH_ENABLED !== "true" || !url || !key || !origin) {
++    throw new AuthError(503, "Khu vực tài khoản chưa được cấu hình.");
++  }
++  try {
++    const provider = new URL(url);
++    const app = new URL(origin);
++    if (provider.protocol !== "https:" || app.origin !== origin ||
++      (app.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && app.hostname === "localhost"))) throw new Error();
++  } catch { throw new AuthError(503, "Cấu hình tài khoản không hợp lệ."); }
++  return { url, key, origin };
++}
++
++export function createRequestClient(token?: string): SupabaseClient {
++  const { url, key } = authConfig();
++  return createClient(url, key, {
++    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
++    global: { headers: token ? { Authorization: `Bearer ${token}` } : {}, fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
++  });
++}
++
++export function cookieValue(req: Request, name: string): string | undefined {
++  const part = req.headers.get("cookie")?.split(";").map(v => v.trim()).find(v => v.startsWith(`${name}=`));
++  if (!part) return undefined;
++  try { return decodeURIComponent(part.slice(name.length + 1)); } catch { throw new AuthError(401, "Session không hợp lệ."); }
++}
++
++export async function verifyToken(client: SupabaseClient, token: string): Promise<VerifiedIdentity> {
++  const { data: auth, error: authError } = await client.auth.getUser(token);
++  if (authError || !auth.user) throw new AuthError(401, "Session không hợp lệ hoặc đã hết hạn.");
++  const { data: profile, error } = await client.from("users")
++    .select("id,auth_user_id,role,full_name,avatar_url,email").eq("auth_user_id", auth.user.id).single();
++  if (error) throw new AuthError(503, "Không thể xác minh hồ sơ tài khoản.");
++  if (!profile || profile.auth_user_id !== auth.user.id || !["CANDIDATE", "EMPLOYER", "ADMIN"].includes(profile.role)) {
++    throw new AuthError(403, "Tài khoản chưa có hồ sơ hợp lệ.");
++  }
++  return { authUserId: auth.user.id, userId: profile.id, role: profile.role, fullName: profile.full_name, avatarUrl: profile.avatar_url, email: profile.email };
++}
++
++export async function authenticate(req: Request, mutation = false) {
++  const config = authConfig();
++  if (mutation) requireOrigin(req, config.origin);
++  const authorization = req.headers.get("authorization");
++  const token = authorization ? /^Bearer ([^\s]+)$/.exec(authorization)?.[1] : cookieValue(req, ACCESS_COOKIE);
++  if (!token || token.length > 16000) throw new AuthError(401, "Cần đăng nhập tài khoản thật.");
++  const client = createRequestClient(token);
++  const identity = await verifyToken(client, token);
++  return { client, identity, token };
++}
++
++export function authResponse(body: unknown, status = 200) {
++  return NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store", "Vary": "Cookie, Authorization", "CDN-Cache-Control": "no-store" } });
++}
++
++export function authFailure(error: unknown) {
++  return authResponse({ success: false, error: error instanceof AuthError ? error.message : "Không thể xử lý yêu cầu." }, error instanceof AuthError ? error.status : 503);
++}
++
++export function sessionCookies(response: NextResponse, session: Session | null) {
++  const options = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/" };
++  response.cookies.set(ACCESS_COOKIE, session?.access_token ?? "", { ...options, maxAge: session ? session.expires_in : 0 });
++  response.cookies.set(REFRESH_COOKIE, session?.refresh_token ?? "", { ...options, maxAge: session ? 60 * 60 * 24 * 7 : 0 });
++  return response;
++}

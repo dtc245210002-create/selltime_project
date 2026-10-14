@@ -81,13 +81,17 @@ export function PaymentQrModal({
 
         {/* Header */}
         <div className="text-center mb-3">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/60 mb-2">
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-300 bg-amber-950/80 px-2.5 py-1 rounded-md border border-amber-800/80 mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>DEMO — Không trừ/chuyển tiền thật</span>
+          </div>
+          <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/60 mb-1.5 mx-auto w-fit">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Ký Quỹ Tự Động VietQR PayOS</span>
+            <span>Ký Quỹ Tự Động VietQR PayOS (Demo)</span>
           </div>
           <h3 className="text-base font-bold text-white">{title}</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Quét mã bằng bất kỳ App Ngân Hàng hoặc Ví Điện Tử nào
+            Màn hình mô phỏng quy trình ký quỹ bảo chứng thù lao ca làm việc
           </p>
         </div>
 
@@ -99,10 +103,10 @@ export function PaymentQrModal({
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h4 className="text-sm font-bold text-white">
-                Ký Quỹ Escrow Thành Công!
+                Ký Quỹ DEMO Thành Công!
               </h4>
               <p className="text-xs text-slate-400">
-                Số tiền <strong className="text-emerald-400 font-mono font-bold">{amount.toLocaleString("vi-VN")} đ</strong> đã được ghi nhận an toàn.
+                Số tiền <strong className="text-emerald-400 font-mono font-bold">{amount.toLocaleString("vi-VN")} đ</strong> đã được mô phỏng ghi nhận an toàn.
               </p>
             </div>
           ) : (
@@ -110,22 +114,26 @@ export function PaymentQrModal({
               {/* Trạng thái lắng nghe giao dịch */}
               <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md mb-3 font-medium border border-emerald-800/60">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span>Đang lắng nghe giao dịch NAPAS 24/7...</span>
+                <span>Đang lắng nghe giao dịch NAPAS 24/7 (Mô phỏng)...</span>
               </div>
 
-              {/* Ảnh VietQR động */}
-              <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-200">
-                <img
-                  src={qrUrl}
-                  alt="Mã VietQR"
-                  className="w-52 h-auto object-contain rounded-md"
-                />
+              {/* Mã QR minh họa (Không dùng QR thanh toán thật) */}
+              <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex flex-col items-center justify-center w-52 h-52 relative overflow-hidden">
+                <div className="w-full h-full border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center p-2 text-center bg-slate-50">
+                  <QrCode className="w-24 h-24 text-slate-700 mb-1" />
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                    MÃ QR MINH HỌA
+                  </span>
+                  <span className="text-[9px] text-slate-500 mt-1 leading-tight">
+                    Chế độ thử nghiệm SellTime
+                  </span>
+                </div>
               </div>
 
               {/* Thông tin chuyển khoản kèm nút sao chép */}
               <div className="w-full mt-3 space-y-1.5 text-xs text-slate-300 bg-slate-900 p-3 rounded-md border border-slate-800">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Số tiền:</span>
+                  <span className="text-slate-500">Số tiền ký quỹ:</span>
                   <div className="flex items-center gap-1">
                     <span className="text-sm font-mono font-bold text-emerald-400">
                       {amount.toLocaleString("vi-VN")} đ
@@ -145,7 +153,7 @@ export function PaymentQrModal({
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Nội dung CK:</span>
+                  <span className="text-slate-500">Mã ca / Nội dung:</span>
                   <div className="flex items-center gap-1">
                     <span className="font-mono font-bold text-purple-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-xs">
                       {content}
@@ -165,9 +173,9 @@ export function PaymentQrModal({
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Tài khoản:</span>
-                  <span className="font-mono font-medium text-slate-200 text-xs">
-                    {bankId} - {accountNo}
+                  <span className="text-slate-500">Tài khoản thụ hưởng:</span>
+                  <span className="font-mono font-medium text-amber-300 text-[11px]">
+                    [Tài khoản thử nghiệm - Demo]
                   </span>
                 </div>
               </div>
@@ -186,18 +194,18 @@ export function PaymentQrModal({
               {isVerifying ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Đang kiểm tra với ngân hàng...</span>
+                  <span>Đang mô phỏng kiểm tra...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Tôi Đã Chuyển Khoản (Kiểm Tra Ngay)</span>
+                  <span>Xác Nhận Ký Quỹ (Thao Tác Mô Phỏng)</span>
                 </>
               )}
             </button>
 
             <p className="text-[11px] text-center text-slate-500">
-              ⚡ Hệ thống tự động xác nhận sau khi nhận được thông báo biến động số dư.
+              ⚡ Chế độ thử nghiệm: Thao tác này mô phỏng xác nhận biến động số dư và giữ tiền ký quỹ Escrow.
             </p>
           </div>
         )}

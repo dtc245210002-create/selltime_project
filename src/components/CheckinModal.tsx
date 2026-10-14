@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Shift } from "../domain/types";
 import { calculateHaversineDistance } from "../domain/matching-engine";
+import { VENUE_PIN, verifyCheckinPin } from "../domain/trust-battery";
 
 interface CheckinModalProps {
   isOpen: boolean;
@@ -50,9 +51,6 @@ export function CheckinModal({
   const [otpValue, setOtpValue] = useState<string>("");
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState(false);
-
-  // Mã PIN tại quầy mẫu (Chủ quán The Cuppa cung cấp)
-  const VENUE_PIN = "8866";
 
   // Tính khoảng cách khi tọa độ thay đổi hoặc khi mở modal
   useEffect(() => {
@@ -125,7 +123,12 @@ export function CheckinModal({
   // Thực hiện xác thực mã PIN OTP tại quầy
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpValue.trim() === VENUE_PIN || otpValue.trim().length === 4) {
+    const cleanPin = otpValue.trim();
+    if (!cleanPin) {
+      setOtpError("Vui lòng nhập mã PIN tại quầy.");
+      return;
+    }
+    if (verifyCheckinPin(cleanPin)) {
       setOtpSuccess(true);
       setOtpError(null);
       setTimeout(() => {
@@ -136,6 +139,7 @@ export function CheckinModal({
         onClose();
       }, 1200);
     } else {
+      setOtpSuccess(false);
       setOtpError("Mã PIN không đúng. Vui lòng hỏi nhân viên quầy thu ngân.");
     }
   };
@@ -155,10 +159,10 @@ export function CheckinModal({
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
-                Điểm Danh Nhận Ca Tại Quán 📍
+                Check-in DEMO 📍
               </h3>
               <p className="text-xs text-slate-400">
-                Xác thực bạn đã có mặt tại quán để bắt đầu tính công
+                GPS, QR và PIN chỉ mô phỏng điểm danh; chưa xác minh qua server
               </p>
             </div>
           </div>
@@ -291,7 +295,7 @@ export function CheckinModal({
                     Bước 2: Quét mã QR tại quầy
                   </span>
                   <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
-                    Live Scanner
+                    Scanner DEMO
                   </span>
                 </div>
 
@@ -310,7 +314,7 @@ export function CheckinModal({
                     <div className="flex flex-col items-center gap-2 text-emerald-400 animate-in zoom-in-75">
                       <CheckCircle2 className="w-12 h-12" />
                       <span className="text-xs font-bold text-white">
-                        Check-in Thành Công!
+                        Check-in DEMO Thành Công!
                       </span>
                     </div>
                   ) : (
@@ -360,7 +364,7 @@ export function CheckinModal({
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-white">
-                    Xác Thực Qua Mã PIN Ca Làm
+                    Mô Phỏng Check-in Qua PIN
                   </h4>
                   <p className="text-[11px] text-slate-400">
                     Dành cho trường hợp mất sóng GPS hoặc thiết bị không có camera
@@ -370,10 +374,10 @@ export function CheckinModal({
 
               <div className="bg-slate-900 border border-slate-800 rounded-md p-3 text-xs text-slate-300">
                 <span>
-                  Hỏi nhân viên thu ngân hoặc chủ quán mã PIN 4 số của ca làm này:
+                  Dùng mã PIN mẫu để thử luồng check-in DEMO:
                 </span>
                 <span className="block font-mono font-bold text-purple-400 mt-1">
-                  Mã PIN mặc định: {VENUE_PIN}
+                  Mã PIN DEMO: {VENUE_PIN}
                 </span>
               </div>
 
@@ -409,7 +413,7 @@ export function CheckinModal({
                     className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md font-semibold text-xs transition-colors active:scale-98 flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
-                    <span>Xác Thực Check-in Bằng PIN</span>
+                    <span>Check-in DEMO Bằng PIN</span>
                   </button>
                 )}
               </form>
@@ -424,7 +428,7 @@ export function CheckinModal({
               <strong className="text-emerald-400 font-mono font-bold">
                 {shift.total_budget.toLocaleString("vi-VN")} đ
               </strong>{" "}
-              được bảo lưu trên hệ thống Escrow an toàn.
+              chỉ là số dư DEMO, chưa có ký quỹ hoặc giải ngân thật.
             </span>
           </div>
         </div>

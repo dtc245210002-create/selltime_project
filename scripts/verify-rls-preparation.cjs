@@ -1,0 +1,48 @@
+'use strict';
+// Validation offline: chỉ đọc marker/cấu trúc file, không shell/network/database/credential.
+// Substring checks không chứng minh coverage executable; cần manual review SQL.
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
+const schema = read('src/database/schema_supabase.sql');
+const baseline = read('src/database/tests/000_test_baseline.sql');
+const suite = read('src/database/tests/006_auth_ownership.sql');
+const cleanup = read('src/database/tests/006_verify_rollback.sql');
+const plan = read('docs/rls-integration-test-plan.md');
+const required = (text, fragment) => assert.ok(text.includes(fragment), `Thiếu cấu trúc tĩnh: ${fragment}`);
+const beginMarker = '-- BẮT ĐẦU DDL NỀN (nguyên văn nguồn trước section 10)\n';
+const endMarker = '-- KẾT THÚC DDL NỀN\n';
+required(baseline, beginMarker);
+required(baseline, endMarker);
+const section10 = schema.indexOf('-- 10.');
+assert.ok(section10 > 0, 'Không tìm thấy section 10 trong schema nguồn');
+assert.equal(baseline.split(beginMarker)[1].split(endMarker)[0], schema.slice(0, section10), 'DDL bootstrap phải khớp nguyên văn schema trước seed');
+assert.ok(!/^\s*INSERT\s+INTO\b/im.test(baseline), 'Bootstrap không được có INSERT seed');
+for (const fragment of ['BEGIN;', 'COMMIT;', 'SET LOCAL search_path = public, extensions;', "to_regclass('auth.users')", "to_regprocedure('auth.uid()')", "to_regclass('public.' || object_name)", "to_regtype('public.' || object_name)"]) required(baseline, fragment);
+const tables = ['users', 'candidate_profiles', 'employer_profiles', 'shifts', 'shift_applications', 'escrow_transactions', 'conversations', 'messages'];
+const enums = [...schema.slice(0, section10).matchAll(/CREATE TYPE (\w+) AS ENUM/g)].map(match => match[1]);
+assert.equal(enums.length, 7, 'Inventory enum nguồn thay đổi: cần review lại');
+for (const table of tables) { required(baseline, `'${table}'`); required(cleanup, `'${table}'`); }
+for (const type of enums) required(baseline, `'${type}'`);
+for (const file of [baseline, suite, cleanup]) required(file, '\\set ON_ERROR_STOP on');
+const hook = '\\ir 006_verify_rollback.sql';
+assert.equal(suite.split(hook).length - 1, 2, 'Cần đúng hai hook collision/rollback');
+assert.ok(suite.indexOf(hook) < suite.indexOf('\nBEGIN;'), 'Preflight phải trước BEGIN fixture');
+assert.ok(suite.lastIndexOf(hook) > suite.lastIndexOf('\nROLLBACK;'), 'Hậu kiểm phải sau ROLLBACK');
+assert.equal((suite.match(/^BEGIN;/gm) || []).length, 1, 'Suite cần một transaction fixture');
+assert.equal((suite.match(/^ROLLBACK;/gm) || []).length, 1, 'Suite phải rollback fixture');
+assert.ok(!/^COMMIT;/m.test(suite), 'Suite không được commit fixture');
+for (const fragment of ['NOT rolsuper AND NOT rolbypassrls', 'count(*) = 3 AND bool_and', 'GET DIAGNOSTICS affected = ROW_COUNT', 'affected = 1', 'affected = 0', 'auth006-applied-application', 'auth006-applied-shift', 'auth006-company-a-updated', 'auth006-company-b-updated', 'auth006-message-name', 'auth006-message-avatar', 'kyc_id_number', 'is_kyc_verified', 'verified_badge', 'checkin_pin', 'escrow_balance', 'UPDATE public.escrow_transactions', 'DELETE FROM public.escrow_transactions', 'SET LOCAL ROLE authenticated;', 'SET LOCAL ROLE anon;']) required(suite, fragment);
+required(cleanup, 'BEGIN READ ONLY;');
+required(cleanup, 'SET LOCAL row_security = off;');
+required(cleanup, 'to_jsonb(r)::text');
+required(cleanup, "email LIKE 'auth006-%'");
+required(cleanup, "to_regclass('auth.identities')");
+for (const suffix of ['601', '602', '603', '604']) required(cleanup, `00000000-0000-4000-8000-000000000${suffix}`);
+required(suite, "public.current_app_user_id() = 'auth006-mapped-user'");
+assert.ok(!/^\s*(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE)\b/im.test(cleanup), 'Hậu kiểm phải read-only');
+for (const fragment of ['READY_FOR_DB_APPROVAL', 'NOT_RUN', 'ON_ERROR_STOP', '--single-transaction', 'phiên đặc quyền mới', 'không hủy bootstrap hoặc migration']) required(plan, fragment);
+console.log(`PASS: kiểm tra file tĩnh offline (${enums.length} enum, ${tables.length} bảng sau migration); SQL NOT_RUN.`);
+console.log('Giới hạn: chỉ marker/cấu trúc tĩnh, không chứng minh coverage executable; cần manual review SQL. Chưa chứng minh SQL syntax/runtime, Auth trigger, quyền hoặc RLS trên Supabase. READY_FOR_DB_APPROVAL; chưa nghiệm thu Auth.');

@@ -1,0 +1,9 @@
+PASS: JSON object bình thường và multibyte chia chunk
+PASS: Chấp nhận đúng 32768 byte; UTF-8 tính theo byte
+PASS: Vượt giới hạn không có Content-Length: 413 và hủy stream
+PASS: Khai Content-Length nhỏ không bỏ qua giới hạn byte thực
+PASS: Content-Length lớn: từ chối trước khi đọc body, hủy nguồn
+PASS: Không đọc chunk sau phần vượt giới hạn; cancellation không chặn lỗi
+PASS: Body rỗng, JSON sai, null/array/scalar đều trả 400
+PASS: Chunk rỗng không thay đổi nội dung JSON
+Request body: 8/8 đạt; network/database: 0 request.

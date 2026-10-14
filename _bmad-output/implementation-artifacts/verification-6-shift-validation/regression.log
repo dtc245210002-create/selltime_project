@@ -1,0 +1,71 @@
+
+(node:2812) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/admin/OneDrive/Desktop/selltime_project/src/domain/matching-engine.ts is not specified and it doesn't parse as CommonJS.
+🧪 ========================================================
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\admin\OneDrive\Desktop\selltime_project\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+   SELL TIME PLATFORM - GIAI ĐOẠN 1 QC REGRESSION TEST SUITE
+========================================================
+
+📍 [Phần 1/6] Matching Engine AHP 4 Biến & GPS Geofencing:
+  ✅ PASS: Khoảng cách KTX TNUT đến Quán The Cuppa ~1.1km
+  ✅ PASS: Định vị tại quán nằm trong Geofencing 100m
+  ✅ PASS: Ca SOS The Cuppa đạt điểm cao (>=85%) cho persona Huy TNUT
+  ✅ PASS: Ca khớp cao có badge màu xanh (green)
+  ✅ PASS: Time score đạt 100 điểm khi khớp hoàn toàn khung giờ và thời lượng
+  ✅ PASS: Ca SOS The Cuppa được xếp hạng ưu tiên số 1
+
+🔑 [Phần 2/6] Xác thực Mã PIN Điểm Danh Tại Quầy (VENUE_PIN):
+  ✅ PASS: VENUE_PIN quy định chuẩn là '8866'
+  ✅ PASS: Chấp nhận mã PIN chính xác '8866'
+  ✅ PASS: Chấp nhận mã PIN '8866' có khoảng trắng thừa (auto trim)
+  ✅ PASS: Từ chối mã '1234' (loại bỏ bypass 4 ký tự)
+  ✅ PASS: Từ chối mã '0000'
+  ✅ PASS: Từ chối 4 ký tự chữ cái bất kỳ
+  ✅ PASS: Từ chối chuỗi rỗng
+  ✅ PASS: Từ chối toàn khoảng trắng
+  ✅ PASS: Từ chối null
+  ✅ PASS: Từ chối undefined
+
+💰 [Phần 3/6] Ngân Sách Escrow & Công thức Thù Lao Ca SOS:
+  ✅ PASS: Tìm thấy ca mẫu shift_sos_01
+  ✅ PASS: Ngân sách ca SOS đã bao gồm thưởng: 153,000đ (32k*4h + 25k)
+  ✅ PASS: Tổng thù lao ứng viên nhận được là 153.000đ (thưởng SOS chỉ cộng đúng 1 lần)
+  ✅ PASS: Ca thường không có thưởng SOS: total_budget = 112.000đ
+
+🔋 [Phần 4/6] Pin Uy Tín (PartyMode) - Thưởng Domain & Chống Lặp:
+  ✅ PASS: Hoàn tất ca thường 5 sao: +3% Pin Uy Tín (không dùng +15% hardcode)
+  ✅ PASS: Hoàn tất ca SOS 5 sao: +5% Pin Uy Tín
+  ✅ PASS: Hoàn tất ca thường 4 sao: +2% Pin Uy Tín
+  ✅ PASS: Pin Uy Tín chạm trần tối đa 100% (không vượt quá 100%)
+  ✅ PASS: Chống hoàn tất lặp: Ca đã COMPLETED không được cộng điểm thưởng lần 2
+  ✅ PASS: Ân hạn 1 giờ khi nhận nhầm: 0 điểm phạt
+  ✅ PASS: Hủy gấp <2h: Trừ 35% Pin & khóa SOS 24h
+  ✅ PASS: Bùng ca: Trừ 50% Pin & khóa SOS 48h
+
+🔒 [Phần 5/6] Điều Kiện & Thời Gian Khóa Nhận Ca SOS:
+  ✅ PASS: Pin Uy Tín 100% đủ điều kiện nhận ca SOS
+  ✅ PASS: Pin Uy Tín 80% đủ điều kiện nhận ca SOS
+  ✅ PASS: Pin Uy Tín 79% bị chặn nhận ca SOS (< 80%)
+  ✅ PASS: Pin Uy Tín 50% bị chặn nhận ca SOS
+  ✅ PASS: Đang trong 24h bị phạt: Cờ khóa SOS có hiệu lực
+  ✅ PASS: Hết thời gian phạt: Tự động hết hiệu lực khóa
+  ✅ PASS: Không có án phạt: Không bị khóa
+  ✅ PASS: Dù Pin 100% nhưng đang bị án phạt thời gian thì vẫn bị chặn nhận ca SOS
+  ✅ PASS: Hết án phạt và Pin >= 80% thì tự động mở lại quyền nhận ca SOS
+  ✅ PASS: Hết án phạt nhưng Pin < 80% vẫn bị chặn nhận ca SOS
+
+⏱️ [Phần 6/6] Đồng Hồ Ca Làm Việc Thực Tế & AI Source Metadata:
+  ✅ PASS: Đồng hồ tính chính xác 15 giây trôi qua từ timestamp check-in
+  ✅ PASS: Vừa check-in xong: Đồng hồ bắt đầu từ 0 giây (bỏ timer cố định 3672s)
+  ✅ PASS: Sau 1 tiếng: Đồng hồ đếm 3600 giây
+  ✅ PASS: Chưa check-in (timestamp 0): Trả về 0 giây
+  ✅ PASS: Mỗi ca làm có đồng hồ độc lập theo timestamp riêng, không dùng chéo của nhau
+  ✅ PASS: Metadata AI xác thực nguồn Gemini trực tiếp
+  ✅ PASS: Metadata fallback xác thực nguồn dữ liệu mẫu cục bộ
+
+========================================================
+📊 TỔNG KẾT BỘ KIỂM THỬ: 45/45 TEST CASES ĐẠT CHUẨN
+🏆 100% KIỂM THỬ CHẤP NHẬN THÀNH CÔNG! GIAI ĐOẠN 1 ĐẠT CHUẨN.
+========================================================
+

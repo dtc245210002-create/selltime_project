@@ -1,0 +1,12 @@
+✔ Windows EPERM resolves through the synchronous filesystem check (0.8779ms)
+✔ missing files and non-Windows permission errors remain failures (0.6654ms)
+✔ a failed synchronous lookup is propagated rather than ignored (0.2199ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.963
+

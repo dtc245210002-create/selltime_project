@@ -1,0 +1,34 @@
+[
+  {
+    "path": "src/database/migrations/006_auth_ownership.sql",
+    "sha256": "7931DBBA940C8EAE6953C88E48098A9C436D6E43D6EC75C42E38E9C619E6B53A"
+  },
+  {
+    "path": "src/database/schema_supabase.sql",
+    "sha256": "3C61C56F4C3B1258F3788126056E0B35B2056BFE5E775A07776650379775F983"
+  },
+  {
+    "path": "src/database/tests/000_test_baseline.sql",
+    "sha256": "579E1558414599285DB6C20A623C72F74C4E1225E1E7A2C7112FDA0E9EAC9BCF"
+  },
+  {
+    "path": "src/database/tests/006_auth_ownership.sql",
+    "sha256": "0FF13F95F860B6D10037B2AD7A18F1313AC7F89421F44EFB7F6F08BC51658D2E"
+  },
+  {
+    "path": "src/database/tests/006_verify_rollback.sql",
+    "sha256": "E2290BEE52C6B72D0FC403BAA09DCF664550F8B892DB7474D44CBE603217DBA8"
+  },
+  {
+    "path": "src/app/api/auth/[action]/route.ts",
+    "sha256": "5B5F00D4A3EB89FB87D0C41792BD4B36234C9804365DD833EA3698862D376578"
+  },
+  {
+    "path": "src/infrastructure/auth/server.ts",
+    "sha256": "88CC53BD8CEECC6E613DAFD7FB43736EC3AB7FD7A76B5DD7751C3AC8015D523E"
+  },
+  {
+    "path": "src/__tests__/auth-ownership.test.mjs",
+    "sha256": "52E6137D40643A43277D834C2762E229FE61EB0B02B9C0E520CFE8F8AAA0E274"
+  }
+]

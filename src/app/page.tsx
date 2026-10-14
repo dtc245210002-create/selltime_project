@@ -27,7 +27,11 @@ import {
   MOCK_EMPLOYER_USER,
 } from "../application/store";
 import { rankShiftsForCandidate } from "../domain/matching-engine";
-import { PenaltyResult } from "../domain/trust-battery";
+import {
+  PenaltyResult,
+  calculateCompletionReward,
+  canAcceptSosShift,
+} from "../domain/trust-battery";
 import { CandidateFilterCriteria, CandidateProfile, EmployerProfile, Shift, User as UserType, UserRole } from "../domain/types";
 import { Sparkles, Info, Bot } from "lucide-react";
 import { ViewModeProvider, useViewMode } from "../components/ViewModeContext";
@@ -63,7 +67,12 @@ function HomeContent() {
   const [shiftStatuses, setShiftStatuses] = useState<Record<string, ShiftAttendanceStatus>>({
     shift_sos_01: "APPLIED",
   });
+  const [checkinTimestamps, setCheckinTimestamps] = useState<Record<string, number>>({});
   const [walletBalance, setWalletBalance] = useState<number>(350000);
+
+  // State khóa ca SOS do án phạt hủy ca
+  const [sosLockUntil, setSosLockUntil] = useState<number | null>(null);
+  const [sosLockReason, setSosLockReason] = useState<string | null>(null);
 
   // State vai trò hiện tại (Mặc định là CANDIDATE)
   const [currentRole, setCurrentRole] = useState<UserRole>("CANDIDATE");
@@ -74,20 +83,8 @@ function HomeContent() {
     DEFAULT_FILTER_CRITERIA
   );
 
-  // Danh sách ca làm việc (khởi tạo từ mock, đồng bộ với API /api/shifts)
+  // Danh sách ca DEMO: dữ liệu mẫu và ca mới chỉ ở local
   const [shifts, setShifts] = useState<Shift[]>(INITIAL_SHIFTS);
-
-  // Nạp danh sách ca từ API nếu có kết nối
-  useEffect(() => {
-    fetch("/api/shifts")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-          setShifts(json.data);
-        }
-      })
-      .catch((err) => console.warn("Dùng danh sách ca dự phòng:", err));
-  }, []);
 
   // Quản lý ứng tuyển
   const [appliedShiftIds, setAppliedShiftIds] = useState<string[]>(["shift_sos_01"]);
@@ -96,8 +93,50 @@ function HomeContent() {
   });
   const [cancelTargetShift, setCancelTargetShift] = useState<Shift | null>(null);
 
+  // Khôi phục trạng thái ca làm & khóa SOS từ localStorage (chỉ áp dụng phiên demo client)
+  useEffect(() => {
+    try {
+      const savedStatuses = localStorage.getItem("selltime_demo_shift_statuses");
+      const savedTimestamps = localStorage.getItem("selltime_demo_checkin_timestamps");
+      const savedLock = localStorage.getItem("selltime_demo_sos_lock");
+      const savedApplied = localStorage.getItem("selltime_demo_applied_ids");
+
+      if (savedStatuses) setShiftStatuses(JSON.parse(savedStatuses));
+      if (savedTimestamps) setCheckinTimestamps(JSON.parse(savedTimestamps));
+      if (savedApplied) setAppliedShiftIds(JSON.parse(savedApplied));
+      if (savedLock) {
+        const parsedLock = JSON.parse(savedLock);
+        if (parsedLock.until && Date.now() < parsedLock.until) {
+          setSosLockUntil(parsedLock.until);
+          setSosLockReason(parsedLock.reason || null);
+        } else {
+          localStorage.removeItem("selltime_demo_sos_lock");
+        }
+      }
+    } catch (e) {
+      console.warn("Không thể khôi phục phiên demo từ localStorage:", e);
+    }
+  }, []);
+
+  // Đồng bộ trạng thái vào localStorage khi có thay đổi
+  useEffect(() => {
+    try {
+      localStorage.setItem("selltime_demo_shift_statuses", JSON.stringify(shiftStatuses));
+      localStorage.setItem("selltime_demo_checkin_timestamps", JSON.stringify(checkinTimestamps));
+      localStorage.setItem("selltime_demo_applied_ids", JSON.stringify(appliedShiftIds));
+      if (sosLockUntil && Date.now() < sosLockUntil) {
+        localStorage.setItem("selltime_demo_sos_lock", JSON.stringify({ until: sosLockUntil, reason: sosLockReason }));
+      } else {
+        localStorage.removeItem("selltime_demo_sos_lock");
+      }
+    } catch (_) {}
+  }, [shiftStatuses, checkinTimestamps, appliedShiftIds, sosLockUntil, sosLockReason]);
+
+  // DEMO uses sample shifts and local additions; it does not read live records.
+
   // Khi chuyển vai trò qua RoleSwitcher
   const handleRoleChange = (newRole: UserRole) => {
+    if (newRole !== "CANDIDATE" && newRole !== "EMPLOYER") return;
     setCurrentRole(newRole);
     if (newRole === "CANDIDATE") {
       setCurrentUser(MOCK_CANDIDATE_USER);
@@ -133,6 +172,26 @@ function HomeContent() {
       setIsAuthModalOpen(true);
       return;
     }
+
+    const targetShift = shifts.find((s) => s.id === shiftId);
+    if (targetShift && targetShift.is_sos) {
+      // 1. Kiểm tra điều kiện Pin Uy Tín >= 80% theo quy tắc domain
+      if (!canAcceptSosShift(candidateProfile.trust_battery)) {
+        alert(
+          `Bạn không thể nhận ca SOS khẩn cấp vì Pin Uy Tín hiện tại (${candidateProfile.trust_battery}%) thấp hơn mức tối thiểu 80%. Hãy hoàn thành thêm ca thường để tích lũy Pin Uy Tín.`
+        );
+        return;
+      }
+      // 2. Kiểm tra nếu đang bị tạm khóa nhận ca SOS do án phạt hủy ca
+      if (sosLockUntil && Date.now() < sosLockUntil) {
+        const remainingHours = Math.max(1, Math.ceil((sosLockUntil - Date.now()) / (3600 * 1000)));
+        alert(
+          `Tài khoản đang bị tạm khóa nhận ca SOS (còn khoảng ${remainingHours} giờ).\nLý do: ${sosLockReason || "Vi phạm quy chế hủy ca khẩn cấp"}.`
+        );
+        return;
+      }
+    }
+
     if (!appliedShiftIds.includes(shiftId)) {
       setAppliedShiftIds((prev) => [...prev, shiftId]);
       setShiftStatuses((prev) => ({ ...prev, [shiftId]: "APPLIED" }));
@@ -148,6 +207,11 @@ function HomeContent() {
       delete updated[shiftId];
       return updated;
     });
+    setCheckinTimestamps((prev) => {
+      const updated = { ...prev };
+      delete updated[shiftId];
+      return updated;
+    });
 
     // Trừ điểm Pin uy tín nếu vượt quá thời gian ân hạn
     if (penalty.penaltyPoints > 0) {
@@ -156,41 +220,50 @@ function HomeContent() {
         trust_battery: Math.max(0, prev.trust_battery - penalty.penaltyPoints),
       }));
     }
+
+    // Áp dụng cờ khóa nhận ca SOS theo đúng lockHours từ domain
+    if (penalty.isLockedFromSos && penalty.lockHours > 0) {
+      const lockUntil = Date.now() + penalty.lockHours * 3600 * 1000;
+      setSosLockUntil(lockUntil);
+      setSosLockReason(penalty.reason);
+    }
+
     setCancelTargetShift(null);
   };
 
-  // Xử lý chủ quán đăng ca mới: lưu local và gọi API backend
-  const handlePostNewShift = async (newShift: Shift) => {
+  // DEMO posting stays local; mock identities must not write to a live database.
+  const handlePostNewShift = (newShift: Shift) => {
     setShifts((prev) => [newShift, ...prev]);
-    try {
-      await fetch("/api/shifts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shift: newShift }),
-      });
-    } catch (e) {
-      console.warn("Không thể đồng bộ ca làm với backend API:", e);
-    }
   };
 
   // Xử lý Check-in thành công
   const handleCheckinSuccess = (shiftId: string) => {
+    const now = Date.now();
     setShiftStatuses((prev) => ({
       ...prev,
       [shiftId]: "IN_PROGRESS",
     }));
+    setCheckinTimestamps((prev) => ({
+      ...prev,
+      [shiftId]: prev[shiftId] || now,
+    }));
   };
 
   // Xử lý Checkout và giải ngân Escrow thành công (cập nhật state an toàn)
-  const handleConfirmCheckout = (shiftId: string, earnedAmount: number) => {
+  const handleConfirmCheckout = (shift: Shift, earnedAmount: number, rating: number = 5) => {
+    // Chống cộng thưởng nhiều lần khi bấm lặp
+    if (shiftStatuses[shift.id] === "COMPLETED") return;
+
+    const reward = calculateCompletionReward(Boolean(shift.is_sos), rating);
+
     setShiftStatuses((prev) => ({
       ...prev,
-      [shiftId]: "COMPLETED",
+      [shift.id]: "COMPLETED",
     }));
     setWalletBalance((prev) => prev + earnedAmount);
     setCandidateProfile((prev) => ({
       ...prev,
-      trust_battery: Math.min(100, prev.trust_battery + 2),
+      trust_battery: Math.min(100, Math.max(0, prev.trust_battery + reward.rewardPoints)),
     }));
   };
 
@@ -276,11 +349,11 @@ function HomeContent() {
                 ) : (
                   <LoginRequiredCard
                     title="Cổng Tuyển Dụng Dành Cho Chủ Quán"
-                    description="Đăng nhập để đăng ca làm linh hoạt/SOS, duyệt ứng viên sinh viên và giải ngân quỹ Escrow."
+                    description="Mở Employer DEMO để thử đăng ca, duyệt ứng viên mẫu và ký quỹ mô phỏng."
                     features={[
                       "Đăng ca khẩn cấp SOS thưởng nóng thu hút ứng viên",
-                      "Duyệt ứng viên 1-chạm & Ký quỹ an toàn VietQR",
-                      "Theo dõi điểm danh GPS 100m & Giờ làm việc thực tế",
+                      "Duyệt ứng viên mẫu & Ký quỹ DEMO",
+                      "Theo dõi điểm danh và thời gian DEMO",
                     ]}
                     roleHint="EMPLOYER"
                     onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -327,7 +400,7 @@ function HomeContent() {
                     description="Đăng nhập để quản lý thông tin thương hiệu, vị trí tọa độ GPS và thiết lập mã PIN quầy."
                     features={[
                       "Cập nhật tên & địa chỉ cơ sở kinh doanh",
-                      "Huy hiệu xác minh thương hiệu đã kiểm duyệt",
+                      "Huy hiệu thương hiệu mẫu, chưa kiểm duyệt thật",
                       "Cài đặt mã PIN điểm danh cho nhân viên",
                     ]}
                     roleHint="EMPLOYER"
@@ -404,6 +477,7 @@ function HomeContent() {
                   <MyShiftsTab
                     appliedShifts={appliedShiftsList}
                     shiftStatuses={shiftStatuses}
+                    checkinTimestamps={checkinTimestamps}
                     onStartCheckin={(s) => setCheckinShift(s)}
                     onStartCheckout={(s) => setCheckoutShift(s)}
                     onCancelShift={(s) => setCancelTargetShift(s)}
@@ -411,11 +485,11 @@ function HomeContent() {
                 ) : (
                   <LoginRequiredCard
                     title="Đăng nhập để theo dõi Ca làm việc"
-                    description="Xem danh sách ca đã ứng tuyển, điểm danh định vị GPS trong bán kính 100m và nhận thù lao ký quỹ VietQR PayOS."
+                    description="Xem ca mẫu, thử check-in và checkout DEMO; chưa có điểm danh hoặc nhận tiền thật."
                     features={[
                       "Quản lý ca đã ứng tuyển & trạng thái xét duyệt",
                       "Điểm danh GPS 2 lớp & Mã PIN quầy 8866",
-                      "Đồng hồ bấm giờ làm việc & Giải ngân ví tức thì",
+                      "Đồng hồ ca và cộng ví DEMO",
                     ]}
                     roleHint="CANDIDATE"
                     onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -465,7 +539,7 @@ function HomeContent() {
                     features={[
                       "Ma trận lịch rảnh 7 ngày trong tuần",
                       "Đo lường & Tích lũy Pin Uy Tín PartyMode (0-100%)",
-                      "Rút tiền thù lao về tài khoản ngân hàng",
+                      "Mô phỏng rút tiền; không chuyển khoản ngân hàng",
                     ]}
                     roleHint="CANDIDATE"
                     onOpenAuth={() => setIsAuthModalOpen(true)}

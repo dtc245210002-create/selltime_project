@@ -14,6 +14,7 @@ import {
   ArrowDownToLine,
   Check,
   CreditCard,
+  QrCode,
 } from "lucide-react";
 import { CandidateProfile, User as UserType } from "../domain/types";
 
@@ -151,9 +152,6 @@ export function ProfileTab({
     }, 1200);
   };
 
-  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=0&addInfo=SellTime%20Luong&accountName=${encodeURIComponent(
-    accountName
-  )}`;
 
   return (
     <div className="space-y-4 w-full">
@@ -183,7 +181,7 @@ export function ProfileTab({
                     </h2>
                     {user.is_kyc_verified && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Đã xác thực eKYC
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Huy hiệu eKYC mẫu (DEMO)
                       </span>
                     )}
                   </div>
@@ -497,16 +495,21 @@ export function ProfileTab({
 
       {/* 5. Escrow Wallet & Instant Payout */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-flat space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-semibold text-white">
-              Ví Thu Nhập Tức Thì (Escrow)
+              Ví DEMO (Escrow mô phỏng)
             </span>
           </div>
-          <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
-            NAPAS 24/7
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-amber-300 bg-amber-950/70 border border-amber-800/80 px-2 py-0.5 rounded-md font-medium">
+              DEMO — Không trừ/chuyển tiền thật
+            </span>
+            <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono hidden sm:inline">
+              NAPAS 24/7 (Demo)
+            </span>
+          </div>
         </div>
 
         <div className="flex items-baseline justify-between pt-0.5">
@@ -515,7 +518,7 @@ export function ProfileTab({
               {balance.toLocaleString("vi-VN")} đ
             </span>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Tiền công từ các ca làm đã hoàn tất và được ký quỹ
+              Tiền công từ các ca làm đã hoàn tất và được ký quỹ (Số dư mô phỏng)
             </p>
           </div>
         </div>
@@ -524,7 +527,7 @@ export function ProfileTab({
           <div className="bg-slate-950 border border-emerald-800/80 rounded-md p-2.5 flex items-center gap-2 text-xs text-emerald-300">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              Đã gửi lệnh rút tiền về tài khoản {bankCode} ({accountNumber})!
+              [Mô phỏng] Đã gửi lệnh rút tiền thử nghiệm về tài khoản {bankCode} ({accountNumber})!
             </span>
           </div>
         ) : (
@@ -534,11 +537,11 @@ export function ProfileTab({
             className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md font-medium text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           >
             {isWithdrawing ? (
-              <span>Đang xử lý chuyển khoản...</span>
+              <span>Đang mô phỏng rút tiền...</span>
             ) : (
               <>
                 <ArrowDownToLine className="w-4 h-4" />
-                <span>Rút Tiền Về Ngân Hàng Ngay</span>
+                <span>Rút Tiền Về Ngân Hàng (Mô Phỏng)</span>
               </>
             )}
           </button>
@@ -551,10 +554,10 @@ export function ProfileTab({
           <div className="flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-purple-400" />
             <h3 className="text-xs font-semibold text-white">
-              Tài Khoản Ngân Hàng Nhận Lương
+              Thông Tin Ngân Hàng DEMO
             </h3>
           </div>
-          <span className="text-[10px] text-slate-400">Tự động nhận sau ca</span>
+          <span className="text-[10px] text-slate-400">Chỉ dùng dữ liệu mẫu</span>
         </div>
 
         <form onSubmit={handleSaveBank} className="space-y-3">
@@ -617,24 +620,22 @@ export function ProfileTab({
             </button>
 
             <span className="text-[11px] text-slate-500">
-              Nhận tiền trong 3 giây sau khi checkout
+              DEMO: chưa có chuyển tiền ngân hàng
             </span>
           </div>
         </form>
 
         {/* VietQR Preview */}
         <div className="pt-2.5 border-t border-slate-800 flex items-center gap-3 bg-slate-950 p-2.5 rounded-lg">
-          <img
-            src={qrUrl}
-            alt="Mã VietQR cá nhân"
-            className="w-16 h-16 rounded-md border border-slate-800 bg-white object-contain shrink-0"
-          />
+          <div aria-label="QR minh họa DEMO, không dùng để chuyển tiền" className="w-16 h-16 rounded-md border border-slate-800 bg-slate-950 flex items-center justify-center shrink-0">
+            <QrCode className="w-10 h-10 text-slate-500" />
+          </div>
           <div className="text-xs space-y-0.5 min-w-0">
             <span className="font-semibold text-white block">
-              Mã VietQR Cá Nhân
+              QR Minh Họa DEMO
             </span>
             <p className="text-[11px] text-slate-400 truncate">
-              Chủ quán hoặc hệ thống Escrow quét để chuyển thù lao vào tài khoản{" "}
+              Thông tin mẫu; QR minh họa không dùng để chuyển tiền vào tài khoản{" "}
               <strong className="text-slate-200">{bankCode} - {accountNumber}</strong>.
             </p>
           </div>

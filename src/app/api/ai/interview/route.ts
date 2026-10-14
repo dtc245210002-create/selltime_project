@@ -4,12 +4,12 @@ import { conductInterviewStep } from "@/infrastructure/ai/gemini";
 export async function POST(req: Request) {
   try {
     const { history, jobTitle, language } = await req.json();
-    const reply = await conductInterviewStep(
+    const result = await conductInterviewStep(
       history || [],
       jobTitle || "Phục vụ ca tối Cafe The Cuppa",
       language || "vi-VN"
     );
-    return NextResponse.json({ reply });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("API Interview Error:", error);
     return NextResponse.json(

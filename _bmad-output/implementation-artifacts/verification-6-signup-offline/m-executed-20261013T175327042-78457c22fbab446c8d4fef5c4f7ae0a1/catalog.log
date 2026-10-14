@@ -1,0 +1,330 @@
+/******** QUERY *********/
+BEGIN READ ONLY;
+/************************/
+
+BEGIN
+/******** QUERY *********/
+SET LOCAL statement_timeout='20s';
+/************************/
+
+SET
+/******** QUERY *********/
+SET LOCAL lock_timeout='2s';
+/************************/
+
+SET
+/******** QUERY *********/
+SELECT current_database(),current_user,current_setting('server_version');
+/************************/
+
+ current_database | current_user | current_setting 
+------------------+--------------+-----------------
+ postgres         | postgres     | 17.6
+(1 row)
+
+/******** QUERY *********/
+SELECT ssl,version,cipher FROM pg_stat_ssl WHERE pid=pg_backend_pid();
+/************************/
+
+ ssl | version |         cipher         
+-----+---------+------------------------
+ t   | TLSv1.3 | TLS_AES_256_GCM_SHA384
+(1 row)
+
+/******** QUERY *********/
+SELECT c.oid,c.relname,c.relkind,c.relrowsecurity,c.relforcerowsecurity,
+  pg_get_userbyid(c.relowner) AS owner
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN ('users','candidate_profiles','employer_profiles',
+  'shifts','shift_applications','conversations','messages','escrow_transactions') ORDER BY c.relname;
+/************************/
+
+  oid  |       relname       | relkind | relrowsecurity | relforcerowsecurity |  owner   
+-------+---------------------+---------+----------------+---------------------+----------
+ 17684 | candidate_profiles  | r       | t              | f                   | postgres
+ 17852 | conversations       | r       | t              | f                   | postgres
+ 17708 | employer_profiles   | r       | t              | f                   | postgres
+ 17776 | escrow_transactions | r       | t              | f                   | postgres
+ 17879 | messages            | r       | t              | f                   | postgres
+ 17754 | shift_applications  | r       | t              | f                   | postgres
+ 17727 | shifts              | r       | t              | f                   | postgres
+ 17671 | users               | r       | t              | f                   | postgres
+(8 rows)
+
+/******** QUERY *********/
+SELECT t.tgname,t.tgenabled,t.tgtype,p.oid AS function_oid,n.nspname,p.proname,
+  pg_get_function_identity_arguments(p.oid) AS signature,p.prosecdef,
+  p.proconfig=ARRAY['search_path=""'] AS empty_search_path,
+  pg_get_userbyid(p.proowner) AS owner,md5(p.prosrc) AS body_hash
+FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE NOT t.tgisinternal AND t.tgrelid IN (to_regclass('auth.users'),to_regclass('public.users'));
+/************************/
+
+          tgname           | tgenabled | tgtype | function_oid | nspname |          proname          | signature | prosecdef | empty_search_path |  owner   |            body_hash             
+---------------------------+-----------+--------+--------------+---------+---------------------------+-----------+-----------+-------------------+----------+----------------------------------
+ st_auth_identity_created  | O         |      5 |        17846 | public  | st_auth_new_identity      |           | t         | t                 | postgres | 5f763cd39b9b47c3219d37daaef72c96
+ st_auth_immutable_account | O         |     19 |        17849 | public  | st_auth_immutable_account |           | f         | t                 | postgres | 4226f087fc497ad3d0bd862ec0178e6f
+(2 rows)
+
+/******** QUERY *********/
+SELECT c.relname,p.polname,p.polcmd,p.polpermissive,
+  ARRAY(SELECT CASE WHEN r=0 THEN 'PUBLIC' ELSE pg_get_userbyid(r) END FROM unnest(p.polroles) r) AS roles,
+  md5(coalesce(pg_get_expr(p.polqual,p.polrelid),'')) AS using_hash,
+  md5(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')) AS check_hash
+FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN ('users','candidate_profiles','employer_profiles',
+  'shifts','shift_applications','conversations','messages','escrow_transactions');
+/************************/
+
+      relname       |            polname            | polcmd | polpermissive |        roles         |            using_hash            |            check_hash            
+--------------------+-------------------------------+--------+---------------+----------------------+----------------------------------+----------------------------------
+ candidate_profiles | st_auth_candidate_own         | r      | t             | {authenticated}      | d95bc4a970654a065680a4356d3c40fa | d41d8cd98f00b204e9800998ecf8427e
+ conversations      | st_auth_conversations_members | r      | t             | {authenticated}      | 9c2334ebde05b970021b4e2bd81735f8 | d41d8cd98f00b204e9800998ecf8427e
+ employer_profiles  | st_auth_employer_own          | r      | t             | {authenticated}      | d95bc4a970654a065680a4356d3c40fa | d41d8cd98f00b204e9800998ecf8427e
+ messages           | st_auth_messages_delete       | d      | t             | {authenticated}      | 4ff72f96412fdf6a515485d71e656af1 | d41d8cd98f00b204e9800998ecf8427e
+ messages           | st_auth_messages_members      | r      | t             | {authenticated}      | 68b8526bfe90aaffbd2db24bd34dceef | d41d8cd98f00b204e9800998ecf8427e
+ messages           | st_auth_messages_send         | a      | t             | {authenticated}      | d41d8cd98f00b204e9800998ecf8427e | 4ff72f96412fdf6a515485d71e656af1
+ shift_applications | st_auth_applications_own      | r      | t             | {authenticated}      | ce0b801474ed2c56e88ae91fd0d2fe27 | d41d8cd98f00b204e9800998ecf8427e
+ shifts             | st_auth_shifts_create         | a      | t             | {authenticated}      | d41d8cd98f00b204e9800998ecf8427e | d4d6af0b2dfe8a2e050f0d6064df33e0
+ shifts             | st_auth_shifts_members        | r      | t             | {authenticated}      | 44744c69f0cecba7b153e5ccbd1c1ff6 | d41d8cd98f00b204e9800998ecf8427e
+ shifts             | st_auth_shifts_public         | r      | t             | {anon,authenticated} | 1cc9ce665ba2a6c22b52d4879d8f3f36 | d41d8cd98f00b204e9800998ecf8427e
+ users              | st_auth_users_own             | r      | t             | {authenticated}      | e39ae6c427cf13173dd70d5d8106758b | d41d8cd98f00b204e9800998ecf8427e
+(11 rows)
+
+/******** QUERY *********/
+SELECT r.rolname,c.relname,has_table_privilege(r.oid,c.oid,'SELECT') AS sel,
+  has_table_privilege(r.oid,c.oid,'INSERT') AS ins,
+  has_table_privilege(r.oid,c.oid,'UPDATE') AS upd,
+  has_table_privilege(r.oid,c.oid,'DELETE') AS del
+FROM pg_roles r CROSS JOIN pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE r.rolname IN ('anon','authenticated','supabase_auth_admin') AND n.nspname='public'
+  AND c.relname IN ('users','candidate_profiles','employer_profiles','shifts','shift_applications',
+    'conversations','messages','escrow_transactions');
+/************************/
+
+       rolname       |       relname       | sel | ins | upd | del 
+---------------------+---------------------+-----+-----+-----+-----
+ authenticated       | candidate_profiles  | t   | f   | f   | f
+ anon                | candidate_profiles  | f   | f   | f   | f
+ supabase_auth_admin | candidate_profiles  | f   | f   | f   | f
+ authenticated       | conversations       | t   | f   | f   | f
+ anon                | conversations       | f   | f   | f   | f
+ supabase_auth_admin | conversations       | f   | f   | f   | f
+ authenticated       | employer_profiles   | t   | f   | f   | f
+ anon                | employer_profiles   | f   | f   | f   | f
+ supabase_auth_admin | employer_profiles   | f   | f   | f   | f
+ authenticated       | escrow_transactions | f   | f   | f   | f
+ anon                | escrow_transactions | f   | f   | f   | f
+ supabase_auth_admin | escrow_transactions | f   | f   | f   | f
+ authenticated       | messages            | t   | t   | f   | t
+ anon                | messages            | f   | f   | f   | f
+ supabase_auth_admin | messages            | f   | f   | f   | f
+ authenticated       | shift_applications  | t   | f   | f   | f
+ anon                | shift_applications  | f   | f   | f   | f
+ supabase_auth_admin | shift_applications  | f   | f   | f   | f
+ authenticated       | shifts              | t   | t   | f   | f
+ anon                | shifts              | t   | f   | f   | f
+ supabase_auth_admin | shifts              | f   | f   | f   | f
+ authenticated       | users               | t   | f   | f   | f
+ anon                | users               | f   | f   | f   | f
+ supabase_auth_admin | users               | f   | f   | f   | f
+(24 rows)
+
+/******** QUERY *********/
+SELECT r.rolname,a.attname,has_column_privilege(r.oid,a.attrelid,a.attnum,'SELECT') AS sel,
+  has_column_privilege(r.oid,a.attrelid,a.attnum,'INSERT') AS ins,
+  has_column_privilege(r.oid,a.attrelid,a.attnum,'UPDATE') AS upd
+FROM pg_roles r CROSS JOIN pg_attribute a WHERE r.rolname IN ('anon','authenticated')
+  AND a.attrelid=to_regclass('public.users') AND a.attnum>0 AND NOT a.attisdropped;
+/************************/
+
+    rolname    |     attname     | sel | ins | upd 
+---------------+-----------------+-----+-----+-----
+ authenticated | id              | t   | f   | f
+ anon          | id              | f   | f   | f
+ authenticated | email           | t   | f   | f
+ anon          | email           | f   | f   | f
+ authenticated | phone           | t   | f   | f
+ anon          | phone           | f   | f   | f
+ authenticated | full_name       | t   | f   | f
+ anon          | full_name       | f   | f   | f
+ authenticated | role            | t   | f   | f
+ anon          | role            | f   | f   | f
+ authenticated | avatar_url      | t   | f   | f
+ anon          | avatar_url      | f   | f   | f
+ authenticated | kyc_id_number   | t   | f   | f
+ anon          | kyc_id_number   | f   | f   | f
+ authenticated | is_kyc_verified | t   | f   | f
+ anon          | is_kyc_verified | f   | f   | f
+ authenticated | created_at      | t   | f   | f
+ anon          | created_at      | f   | f   | f
+ authenticated | updated_at      | t   | f   | f
+ anon          | updated_at      | f   | f   | f
+ authenticated | auth_user_id    | t   | f   | f
+ anon          | auth_user_id    | f   | f   | f
+(22 rows)
+
+/******** QUERY *********/
+SELECT p.oid,n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) AS signature,
+  p.prosecdef,p.provolatile,p.prorettype::regtype AS return_type,
+  pg_get_userbyid(p.proowner) AS owner,md5(p.prosrc) AS body_hash,
+  r.rolname,has_function_privilege(r.oid,p.oid,'EXECUTE') AS can_execute
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN pg_roles r
+WHERE n.nspname='public' AND r.rolname IN ('anon','authenticated','supabase_auth_admin')
+  AND p.proname IN ('st_auth_new_identity','handle_auth_signup','current_app_user_id','current_app_role',
+    'set_employer_role','is_conversation_member','owns_shift','applied_to_shift');
+/************************/
+
+  oid  | nspname |       proname        | signature | prosecdef | provolatile | return_type |  owner   |            body_hash             |       rolname       | can_execute 
+-------+---------+----------------------+-----------+-----------+-------------+-------------+----------+----------------------------------+---------------------+-------------
+ 17846 | public  | st_auth_new_identity |           | t         | v           | trigger     | postgres | 5f763cd39b9b47c3219d37daaef72c96 | authenticated       | f
+ 17846 | public  | st_auth_new_identity |           | t         | v           | trigger     | postgres | 5f763cd39b9b47c3219d37daaef72c96 | anon                | f
+ 17846 | public  | st_auth_new_identity |           | t         | v           | trigger     | postgres | 5f763cd39b9b47c3219d37daaef72c96 | supabase_auth_admin | f
+(3 rows)
+
+/******** QUERY *********/
+SELECT c.conname,c.conrelid::regclass AS source,c.confrelid::regclass AS target,
+  c.convalidated,c.condeferrable,c.confdeltype,c.confupdtype,
+  ARRAY(SELECT a.attname FROM unnest(c.conkey) WITH ORDINALITY k(num,seq)
+    JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.num ORDER BY seq) AS source_columns,
+  ARRAY(SELECT a.attname FROM unnest(c.confkey) WITH ORDINALITY k(num,seq)
+    JOIN pg_attribute a ON a.attrelid=c.confrelid AND a.attnum=k.num ORDER BY seq) AS target_columns
+FROM pg_constraint c WHERE c.contype='f' AND (c.conrelid IN
+  (SELECT t.oid FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='public'
+    AND t.relname IN ('users','candidate_profiles','employer_profiles','shifts','shift_applications',
+      'conversations','messages','escrow_transactions')) OR c.confrelid=to_regclass('public.users'));
+/************************/
+
+                conname                |       source        |    target     | convalidated | condeferrable | confdeltype | confupdtype |  source_columns   | target_columns 
+---------------------------------------+---------------------+---------------+--------------+---------------+-------------+-------------+-------------------+----------------
+ candidate_profiles_user_id_fkey       | candidate_profiles  | users         | t            | f             | c           | a           | {user_id}         | {id}
+ employer_profiles_user_id_fkey        | employer_profiles   | users         | t            | f             | c           | a           | {user_id}         | {id}
+ shifts_employer_id_fkey               | shifts              | users         | t            | f             | c           | a           | {employer_id}     | {id}
+ shift_applications_shift_id_fkey      | shift_applications  | shifts        | t            | f             | c           | a           | {shift_id}        | {id}
+ shift_applications_candidate_id_fkey  | shift_applications  | users         | t            | f             | c           | a           | {candidate_id}    | {id}
+ escrow_transactions_shift_id_fkey     | escrow_transactions | shifts        | t            | f             | n           | a           | {shift_id}        | {id}
+ escrow_transactions_employer_id_fkey  | escrow_transactions | users         | t            | f             | n           | a           | {employer_id}     | {id}
+ escrow_transactions_candidate_id_fkey | escrow_transactions | users         | t            | f             | n           | a           | {candidate_id}    | {id}
+ st_auth_users_identity_fk             | users               | auth.users    | t            | f             | n           | a           | {auth_user_id}    | {id}
+ conversations_shift_id_fkey           | conversations       | shifts        | t            | f             | a           | a           | {shift_id}        | {id}
+ conversations_candidate_id_fkey       | conversations       | users         | t            | f             | a           | a           | {candidate_id}    | {id}
+ conversations_employer_id_fkey        | conversations       | users         | t            | f             | a           | a           | {employer_id}     | {id}
+ messages_conversation_id_fkey         | messages            | conversations | t            | f             | c           | a           | {conversation_id} | {id}
+ messages_sender_id_fkey               | messages            | users         | t            | f             | a           | a           | {sender_id}       | {id}
+(14 rows)
+
+/******** QUERY *********/
+SELECT a.attname,format_type(a.atttypid,a.atttypmod) AS type,a.attnotnull,
+  a.attidentity,a.attgenerated,a.atthasdef
+FROM pg_attribute a WHERE a.attrelid=to_regclass('public.users') AND a.attnum>0 AND NOT a.attisdropped;
+/************************/
+
+     attname     |           type           | attnotnull | attidentity | attgenerated | atthasdef 
+-----------------+--------------------------+------------+-------------+--------------+-----------
+ id              | character varying(50)    | t          |             |              | f
+ email           | character varying(120)   | t          |             |              | f
+ phone           | character varying(20)    | t          |             |              | f
+ full_name       | character varying(100)   | t          |             |              | f
+ role            | user_role                | t          |             |              | t
+ avatar_url      | text                     | f          |             |              | f
+ kyc_id_number   | character varying(20)    | f          |             |              | f
+ is_kyc_verified | boolean                  | f          |             |              | t
+ created_at      | timestamp with time zone | f          |             |              | t
+ updated_at      | timestamp with time zone | f          |             |              | t
+ auth_user_id    | uuid                     | f          |             |              | f
+(11 rows)
+
+/******** QUERY *********/
+SELECT conname,contype,convalidated,md5(pg_get_constraintdef(oid)) AS definition_hash
+FROM pg_constraint WHERE conrelid=to_regclass('public.users');
+/************************/
+
+            conname            | contype | convalidated |         definition_hash          
+-------------------------------+---------+--------------+----------------------------------
+ st_auth_users_identity_fk     | f       | t            | f91277b3e8169a1b117532ba0a21d069
+ st_auth_users_identity_unique | u       | t            | 3939596b6b0eb0c3a60cbfda6e98ad0c
+ users_email_key               | u       | t            | cb128631a72269d9e93b234b2814eb06
+ users_pkey                    | p       | t            | 4c6419b3704337bbfe50f018842a9ad3
+(4 rows)
+
+/******** QUERY *********/
+SELECT d.classid::regclass AS dependent_catalog,d.objid,d.objsubid,d.deptype,
+  d.refclassid::regclass AS referenced_catalog,d.refobjid,d.refobjsubid
+FROM pg_depend d WHERE
+  (d.classid='pg_policy'::regclass AND d.objid IN
+    (SELECT p.oid FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='public' AND c.relname IN ('users','candidate_profiles','employer_profiles','shifts',
+        'shift_applications','conversations','messages','escrow_transactions')))
+  OR (d.classid='pg_proc'::regclass AND d.objid IN
+    (SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+      WHERE n.nspname='public' AND p.proname IN ('st_auth_new_identity','handle_auth_signup',
+        'current_app_user_id','current_app_role','set_employer_role','is_conversation_member','owns_shift','applied_to_shift')));
+/************************/
+
+ dependent_catalog | objid | objsubid | deptype | referenced_catalog | refobjid | refobjsubid 
+-------------------+-------+----------+---------+--------------------+----------+-------------
+ pg_proc           | 17846 |        0 | n       | pg_language        |    13619 |           0
+ pg_proc           | 17846 |        0 | n       | pg_namespace       |     2200 |           0
+ pg_policy         | 17913 |        0 | a       | pg_class           |    17671 |           0
+ pg_policy         | 17913 |        0 | n       | pg_class           |    17671 |          11
+ pg_policy         | 17913 |        0 | n       | pg_proc            |    16542 |           0
+ pg_policy         | 17914 |        0 | a       | pg_class           |    17684 |           0
+ pg_policy         | 17914 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17914 |        0 | n       | pg_class           |    17684 |           1
+ pg_policy         | 17915 |        0 | a       | pg_class           |    17708 |           0
+ pg_policy         | 17915 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17915 |        0 | n       | pg_class           |    17708 |           1
+ pg_policy         | 17916 |        0 | a       | pg_class           |    17727 |           0
+ pg_policy         | 17916 |        0 | n       | pg_class           |    17727 |          26
+ pg_policy         | 17916 |        0 | n       | pg_class           |    17727 |          28
+ pg_policy         | 17916 |        0 | n       | pg_type            |    17628 |           0
+ pg_policy         | 17917 |        0 | a       | pg_class           |    17727 |           0
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17852 |           2
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17852 |           3
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17852 |           4
+ pg_policy         | 17917 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17727 |           1
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17727 |           2
+ pg_policy         | 17917 |        0 | n       | pg_class           |    17727 |          28
+ pg_policy         | 17918 |        0 | a       | pg_class           |    17727 |           0
+ pg_policy         | 17918 |        0 | n       | pg_proc            |    17844 |           0
+ pg_policy         | 17918 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17918 |        0 | n       | pg_class           |    17727 |           2
+ pg_policy         | 17918 |        0 | n       | pg_class           |    17727 |          17
+ pg_policy         | 17918 |        0 | n       | pg_class           |    17727 |          26
+ pg_policy         | 17918 |        0 | n       | pg_class           |    17727 |          28
+ pg_policy         | 17918 |        0 | n       | pg_type            |    17628 |           0
+ pg_policy         | 17919 |        0 | a       | pg_class           |    17754 |           0
+ pg_policy         | 17919 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17919 |        0 | n       | pg_class           |    17754 |           3
+ pg_policy         | 17920 |        0 | a       | pg_class           |    17852 |           0
+ pg_policy         | 17920 |        0 | n       | pg_class           |    17852 |           3
+ pg_policy         | 17920 |        0 | n       | pg_class           |    17852 |           4
+ pg_policy         | 17920 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17921 |        0 | a       | pg_class           |    17879 |           0
+ pg_policy         | 17921 |        0 | n       | pg_class           |    17879 |           2
+ pg_policy         | 17921 |        0 | n       | pg_class           |    17852 |           1
+ pg_policy         | 17921 |        0 | n       | pg_class           |    17852 |           3
+ pg_policy         | 17921 |        0 | n       | pg_class           |    17852 |           4
+ pg_policy         | 17921 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17922 |        0 | a       | pg_class           |    17879 |           0
+ pg_policy         | 17922 |        0 | n       | pg_class           |    17879 |           2
+ pg_policy         | 17922 |        0 | n       | pg_class           |    17879 |           3
+ pg_policy         | 17922 |        0 | n       | pg_class           |    17852 |           1
+ pg_policy         | 17922 |        0 | n       | pg_class           |    17852 |           3
+ pg_policy         | 17922 |        0 | n       | pg_class           |    17852 |           4
+ pg_policy         | 17922 |        0 | n       | pg_proc            |    17843 |           0
+ pg_policy         | 17923 |        0 | a       | pg_class           |    17879 |           0
+ pg_policy         | 17923 |        0 | n       | pg_class           |    17879 |           2
+ pg_policy         | 17923 |        0 | n       | pg_class           |    17879 |           3
+ pg_policy         | 17923 |        0 | n       | pg_class           |    17852 |           1
+ pg_policy         | 17923 |        0 | n       | pg_class           |    17852 |           3
+ pg_policy         | 17923 |        0 | n       | pg_class           |    17852 |           4
+ pg_policy         | 17923 |        0 | n       | pg_proc            |    17843 |           0
+(58 rows)
+
+/******** QUERY *********/
+COMMIT;
+/************************/
+
+COMMIT

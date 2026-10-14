@@ -1,0 +1,4 @@
+PASS STATIC: CAP-1 collision/UUID/default/RLS artifacts; CAP-2 boundary/provider-mock/duplicate/concurrency artifacts.
+PASS STATIC: CAP-3 lock/recheck/dependencies/shape/definition/atomic order; CAP-4 conditional rollback/order/body hash.
+PASS PRESERVATION: 8 file đã giữ SHA256; HEAD/index kiểm tra riêng trong evidence.
+SQL syntax/runtime, trigger/RLS/provider/concurrency/Unicode parity: NOT RUN. Static markers không thay thế SQL integration.

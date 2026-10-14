@@ -1,0 +1,10 @@
+PASS LOCAL: CAP-1 route identity dùng auth_user_id khi DEMO trùng email
+PASS LOCAL: CAP-1/CAP-2 API role guard 403 trước provider
+PASS LOCAL: CAP-2 invalid/null/blank/internal whitespace/raw >120 không tới provider
+PASS LOCAL: CAP-2 trim/mixed case/login: giữ policy hiện có, boundary 120
+PASS LOCAL: CAP-2 Unicode input được giữ byte; KHÔNG chứng minh parity provider/PostgreSQL
+PASS LOCAL: CAP-2 U+0085 giữ boundary API hiện có; SQL/provider parity NOT RUN
+PASS LOCAL: CAP-2 duplicate provider error generic, không enumeration
+PASS LOCAL: CAP-2 confirmation/concealed duplicate không tiết lộ account tồn tại
+PASS LOCAL: CAP-2 origin/config fail-closed không gọi provider
+LOCAL 9/9; SQL/provider/concurrency/Unicode integration: NOT RUN; network: 0.

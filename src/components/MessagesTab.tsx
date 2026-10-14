@@ -47,12 +47,14 @@ interface MessagesTabProps {
   currentUser?: User | null;
   currentRole?: UserRole;
   onOpenCheckin?: (shift: Shift) => void;
+  demoOnly?: boolean;
 }
 
 export function MessagesTab({
   currentUser = MOCK_CANDIDATE_USER,
   currentRole = "CANDIDATE",
   onOpenCheckin,
+  demoOnly = true,
 }: MessagesTabProps) {
   const isEmployer = currentRole === "EMPLOYER";
   const myUser = currentUser || (isEmployer ? MOCK_EMPLOYER_USER : MOCK_CANDIDATE_USER);
@@ -109,6 +111,8 @@ export function MessagesTab({
   const { isMobile } = useViewMode();
   const [activeConvId, setActiveConvId] = useState<string>("conv_1");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loadedDemoKey, setLoadedDemoKey] = useState<string | null>(null);
+  const demoKey = `selltime_demo_chat_${myUser.id}_${activeConvId}`;
   const [lastMessagesMap, setLastMessagesMap] = useState<Record<string, { text: string; time: string }>>({});
   const [inputVal, setInputVal] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -186,6 +190,26 @@ export function MessagesTab({
   };
 
   useEffect(() => {
+    if (demoOnly) {
+      let sampleMessages: ChatMessage[] = [{
+        id: `demo_${activeConvId}`,
+        conversation_id: activeConvId,
+        sender_id: isEmployer ? MOCK_CANDIDATE_USER.id : MOCK_EMPLOYER_USER.id,
+        sender_name: activeConv.partnerName,
+        sender_avatar: activeConv.partnerAvatar,
+        content: activeConv.defaultLastMessage,
+        created_at: activeConv.defaultTime,
+      }];
+      try {
+        const cached = JSON.parse(localStorage.getItem(demoKey) || "null");
+        if (Array.isArray(cached)) sampleMessages = cached;
+      } catch (_) {}
+      setMessages(sampleMessages);
+      setLoadedDemoKey(demoKey);
+      setIsConnected(false);
+      setLastMessagesMap({});
+      return;
+    }
     if (typeof window !== "undefined") {
       try {
         const cached = localStorage.getItem(`selltime_chat_${activeConvId}`);
@@ -249,7 +273,14 @@ export function MessagesTab({
       if (es) es.close();
       clearInterval(interval);
     };
-  }, [activeConvId]);
+  }, [activeConvId, demoOnly, demoKey]);
+
+  useEffect(() => {
+    if (!demoOnly || loadedDemoKey !== demoKey) return;
+    try {
+      localStorage.setItem(demoKey, JSON.stringify(messages));
+    } catch (_) {}
+  }, [demoOnly, loadedDemoKey, demoKey, messages]);
 
   // Only scroll inner container when new messages arrive AND user is already at the bottom
   useEffect(() => {
@@ -294,6 +325,7 @@ export function MessagesTab({
     setTimeout(() => scrollToBottom(true), 30);
 
     try {
+      if (demoOnly) return; // Mock send stays in this browser, never in API/ntfy.
       await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -316,6 +348,16 @@ export function MessagesTab({
 
     setIsResetting(true);
     try {
+      if (demoOnly) {
+        setMessages([]);
+        setLastMessagesMap((prev) => {
+          const next = { ...prev };
+          delete next[activeConvId];
+          return next;
+        });
+        localStorage.removeItem(demoKey);
+        return;
+      }
       const res = await fetch(`/api/messages?conversation_id=${activeConvId}`, {
         method: "DELETE",
       });
@@ -455,7 +497,7 @@ export function MessagesTab({
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             </div>
             <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
-              <span className="text-emerald-400 font-medium">Trực tuyến</span>
+              <span className="text-emerald-400 font-medium">{demoOnly ? "Chat DEMO local — không gửi tới người thật" : "Trực tuyến"}</span>
               <span>•</span>
               <span className="truncate">{activeConv.partnerRoleTitle}</span>
             </p>
@@ -491,7 +533,7 @@ export function MessagesTab({
       <div className="bg-slate-900/60 border-b border-slate-800/80 px-3 py-1 flex items-center justify-between text-[10px] text-slate-400">
         <div className="flex items-center gap-1.5">
           <Wifi className="w-3 h-3 text-emerald-400" />
-          <span>Cloud P2P trực tuyến</span>
+          <span>{demoOnly ? "DEMO: chỉ lưu trong trình duyệt" : "Cloud P2P trực tuyến"}</span>
         </div>
         <span className="font-mono text-slate-400">
           {messages.length} tin

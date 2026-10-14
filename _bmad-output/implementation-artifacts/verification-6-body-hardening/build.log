@@ -1,0 +1,38 @@
+
+> selltime-platform@0.1.0 build
+> node --require ./scripts/windows-realpath.cjs node_modules/next/dist/bin/next build
+
+   ▲ Next.js 15.5.25
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 18.2s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/9) ...
+   Generating static pages (2/9) 
+   Generating static pages (4/9) 
+   Generating static pages (6/9) 
+ ✓ Generating static pages (9/9)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    57.6 kB         160 kB
+├ ○ /_not-found                            995 B         103 kB
+├ ƒ /api/ai/cv                             137 B         102 kB
+├ ƒ /api/ai/gap                            137 B         102 kB
+├ ƒ /api/ai/interview                      137 B         102 kB
+├ ƒ /api/auth/[action]                     137 B         102 kB
+├ ƒ /api/messages                          137 B         102 kB
+├ ƒ /api/shifts                            137 B         102 kB
+└ ○ /auth                                4.77 kB         107 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/493-014e7164c39539ed.js       46.1 kB
+  ├ chunks/4bd1b696-21f374d1156f834a.js  54.2 kB
+  └ other shared chunks (total)          1.93 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

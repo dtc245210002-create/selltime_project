@@ -1,0 +1,36 @@
+diff --git a/_bmad-output/implementation-artifacts/verification-6-shift-validation/route.before.ts.txt b/src/app/api/shifts/route.ts
+index 32076e2..639e22a 100644
+--- a/_bmad-output/implementation-artifacts/verification-6-shift-validation/route.before.ts.txt
++++ b/src/app/api/shifts/route.ts
+@@ -4,6 +4,8 @@ import { AuthError, boundedString, readBody, requireOwner, requireRole } from "@
+ import type { Shift } from "@/domain/types";
+ 
+ export const dynamic = "force-dynamic";
++const MAX_MONEY = 2147483647;
++const isTime = (value: unknown) => typeof value === "string" && value.length === 5 && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+ export async function GET(req: Request) {
+   try {
+     const { client } = await authenticate(req);
+@@ -23,10 +25,10 @@ export async function POST(req: Request) {
+     boundedString(shift.location_address, 255, "Địa chỉ"); boundedString(shift.shift_date, 50, "Ngày");
+     if (!["PART_TIME", "GIG", "INTERNSHIP"].includes(shift.work_type) ||
+       !["MORNING", "LUNCH", "AFTERNOON", "EVENING", "NIGHT"].includes(shift.period) ||
+-      !/^\d{2}:\d{2}$/.test(shift.shift_start) || !/^\d{2}:\d{2}$/.test(shift.shift_end) ||
++      !isTime(shift.shift_start) || !isTime(shift.shift_end) ||
+       !Number.isFinite(shift.duration_hours) || shift.duration_hours <= 0 || shift.duration_hours > 24 ||
+-      !Number.isSafeInteger(shift.hourly_wage) || shift.hourly_wage <= 0 ||
+-      !Number.isSafeInteger(shift.total_budget) || shift.total_budget <= 0 ||
++      !Number.isSafeInteger(shift.hourly_wage) || shift.hourly_wage <= 0 || shift.hourly_wage > MAX_MONEY ||
++      !Number.isSafeInteger(shift.total_budget) || shift.total_budget <= 0 || shift.total_budget > MAX_MONEY ||
+       !Number.isSafeInteger(shift.required_candidates) || shift.required_candidates < 1 || shift.required_candidates > 100 ||
+       typeof shift.is_sos !== "boolean" ||
+       !Number.isFinite(shift.location_coords?.latitude) || Math.abs(shift.location_coords.latitude) > 90 ||
+@@ -34,7 +36,7 @@ export async function POST(req: Request) {
+     for (const list of [shift.required_skills, shift.store_perks, shift.friendly_tags]) {
+       if (list !== undefined && (!Array.isArray(list) || list.length > 30 || list.some(v => typeof v !== "string" || v.length > 200))) throw new AuthError(400, "Danh sách ca làm không hợp lệ.");
+     }
+-    if ((shift.description?.length ?? 0) > 5000 || (shift.sos_bonus_amount !== undefined && (!Number.isSafeInteger(shift.sos_bonus_amount) || shift.sos_bonus_amount < 0))) throw new AuthError(400, "Ca làm không hợp lệ.");
++    if ((shift.description?.length ?? 0) > 5000 || (shift.sos_bonus_amount !== undefined && (!Number.isSafeInteger(shift.sos_bonus_amount) || shift.sos_bonus_amount < 0 || shift.sos_bonus_amount > MAX_MONEY))) throw new AuthError(400, "Ca làm không hợp lệ.");
+     return authResponse({ success: true, data: await saveShiftToSupabase(client, identity, shift) }, 201);
+   } catch (error) { return authFailure(error); }
+ }

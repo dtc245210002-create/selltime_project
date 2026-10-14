@@ -1,0 +1,16 @@
+{
+  "offline": true,
+  "case": "exit2",
+  "gate": "NATIVE_FAILURE",
+  "native_exit": 2,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "39297b32bf6a47f1be2c6ca6d4ac1640",
+  "pump_threads_stopped": true,
+  "bytes": {
+    "stdout": 22,
+    "stderr": 22
+  },
+  "native_exit_saved": true
+}

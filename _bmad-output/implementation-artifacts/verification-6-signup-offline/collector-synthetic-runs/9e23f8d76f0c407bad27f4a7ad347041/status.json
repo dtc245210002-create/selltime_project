@@ -1,0 +1,15 @@
+{
+  "offline": true,
+  "case": "success",
+  "gate": "COLLECTION_IO_FAILED",
+  "native_exit": null,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "9e23f8d76f0c407bad27f4a7ad347041",
+  "pump_threads_stopped": true,
+  "bytes": {
+    "stdout": 0,
+    "stderr": 0
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "offline": true,
+  "case": "exact-boundary",
+  "gate": "PASS",
+  "native_exit": 0,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "214646ea7d6c489e83cb555b456396cd",
+  "pump_threads_stopped": true,
+  "bytes": {
+    "stdout": 4096,
+    "stderr": 4096
+  },
+  "native_exit_saved": true
+}

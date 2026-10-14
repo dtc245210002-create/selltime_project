@@ -11,12 +11,14 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Shift } from "../domain/types";
+import { calculateShiftElapsedTime } from "../domain/trust-battery";
 
 export type ShiftAttendanceStatus = "APPLIED" | "IN_PROGRESS" | "COMPLETED";
 
 interface MyShiftsTabProps {
   appliedShifts: Shift[];
   shiftStatuses: Record<string, ShiftAttendanceStatus>;
+  checkinTimestamps?: Record<string, number>;
   onStartCheckin: (shift: Shift) => void;
   onStartCheckout: (shift: Shift) => void;
   onCancelShift?: (shift: Shift) => void;
@@ -25,14 +27,15 @@ interface MyShiftsTabProps {
 export function MyShiftsTab({
   appliedShifts,
   shiftStatuses,
+  checkinTimestamps = {},
   onStartCheckin,
   onStartCheckout,
   onCancelShift,
 }: MyShiftsTabProps) {
   const [filter, setFilter] = useState<"ALL" | ShiftAttendanceStatus>("ALL");
-  const [timerSeconds, setTimerSeconds] = useState<number>(3672); // 1h 01m 12s
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
 
-  // Live timer for active shift
+  // Live timer tick cho ca làm việc đang diễn ra
   useEffect(() => {
     const hasInProgress = Object.values(shiftStatuses).some(
       (s) => s === "IN_PROGRESS"
@@ -40,10 +43,17 @@ export function MyShiftsTab({
     if (!hasInProgress) return;
 
     const interval = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
+      setCurrentTime(Date.now());
     }, 1000);
     return () => clearInterval(interval);
   }, [shiftStatuses]);
+
+  // Tính số giây đã trôi qua dựa trên timestamp check-in thực tế của từng ca
+  const getShiftElapsedSeconds = (shiftId: string): number => {
+    const checkinTime = checkinTimestamps[shiftId];
+    if (!checkinTime) return 0;
+    return calculateShiftElapsedTime(checkinTime, currentTime);
+  };
 
   const formatTimer = (totalSec: number) => {
     const hours = Math.floor(totalSec / 3600);
@@ -67,7 +77,7 @@ export function MyShiftsTab({
         <div>
           <h2 className="text-base font-bold text-white tracking-tight">Ca Làm Của Tôi</h2>
           <p className="text-xs text-slate-400">
-            Theo dõi tiến độ, check-in GPS và nhận thù lao Escrow
+            Theo dõi tiến độ, check-in và ví DEMO
           </p>
         </div>
         <span className="text-xs font-mono font-medium bg-slate-900 text-slate-300 border border-slate-800 px-2.5 py-0.5 rounded-md">
@@ -81,9 +91,9 @@ export function MyShiftsTab({
           <Shield className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="text-xs">
-          <span className="font-semibold text-white block">Bảo chứng ký quỹ Escrow:</span>
+          <span className="font-semibold text-white block">Ký quỹ DEMO:</span>
           <span className="text-slate-400 text-[11px]">
-            Tiền công đã được chủ cơ sở nạp ký quỹ. Hoàn thành ca là nhận tiền tức thì qua VietQR.
+            Tiền công và ký quỹ chỉ mô phỏng; hoàn thành ca cộng vào ví DEMO, không chuyển tiền qua VietQR.
           </span>
         </div>
       </div>
@@ -209,12 +219,12 @@ export function MyShiftsTab({
                           Thời gian làm thực tế:
                         </span>
                         <span className="text-sm font-bold font-mono text-white">
-                          {formatTimer(timerSeconds)}
+                          {formatTimer(getShiftElapsedSeconds(shift.id))}
                         </span>
                       </div>
                     </div>
                     <span className="text-[10px] text-emerald-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
-                      Escrow Bảo Đảm
+                      Escrow DEMO
                     </span>
                   </div>
                 )}
@@ -250,7 +260,7 @@ export function MyShiftsTab({
                           className="text-xs font-medium text-white bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors shadow-xs"
                         >
                           <QrCode className="w-3.5 h-3.5" />
-                          <span>Check-in GPS / QR</span>
+                          <span>Check-in DEMO</span>
                         </button>
                       </>
                     )}
@@ -261,14 +271,14 @@ export function MyShiftsTab({
                         className="text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors"
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
-                        <span>Ký Nhận & Rút Lương</span>
+                        <span>Checkout DEMO</span>
                       </button>
                     )}
 
                     {status === "COMPLETED" && (
                       <span className="text-xs font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-md flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Đã giải ngân
+                        Đã cộng ví DEMO
                       </span>
                     )}
                   </div>

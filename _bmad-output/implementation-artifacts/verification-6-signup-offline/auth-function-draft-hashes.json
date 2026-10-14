@@ -1,0 +1,18 @@
+[
+  {
+    "File": "auth-function-ownership-private-draft.sql",
+    "SHA256": "AF1C843C00E32E106ABF9F97A0283774BB994E3C936B734A296673AFB39A6195"
+  },
+  {
+    "File": "auth-function-protection-private-draft.sql",
+    "SHA256": "F55291550C49A76B121CD37D2243335C213D0E03A397E757660D59714BF8D060"
+  },
+  {
+    "File": "auth-function-role-private-draft.sql",
+    "SHA256": "3222BA601554DAAD6D6B531132BC7A1ACA429F0CC34F844053445C2CF85B86BF"
+  },
+  {
+    "File": "auth-function-signup-private-draft.sql",
+    "SHA256": "469A4D353E0FE787C36F21194AE992193A07CED8B851760A363640FBCD167242"
+  }
+]

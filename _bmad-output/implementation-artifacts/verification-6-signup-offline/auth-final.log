@@ -1,0 +1,24 @@
+PASS: Cấu hình mặc định tắt/thiếu không gọi provider (503)
+PASS: Token thiếu/giả/hết hạn bị từ chối (401)
+PASS: Candidate không đăng ca (403)
+PASS: Origin sai bị từ chối mutation (403)
+PASS: Giả owner 403, INSERT đúng owner, ID trùng 409 không ghi đè
+PASS: Hai session nhận dữ liệu ca riêng theo client RLS của request
+PASS: Giờ sai range/format bị từ chối 400 trước INSERT ở cả start/end
+PASS: Giờ không phải string không bị coercion
+PASS: Giờ biên 00:00/23:59 và các đoạn range hợp lệ giữ nguyên
+PASS: Các trường tiền vượt INT max hoặc sai kiểu/phân số bị từ chối trước INSERT
+PASS: Wage/budget vẫn dương và bắt buộc; bonus vẫn không âm và optional
+PASS: INT max được chấp nhận riêng từng field và đồng thời, không đổi budget formula
+PASS: Hội thoại người khác không đọc/gửi/xóa (404)
+PASS: Sender từ session và giới hạn input
+PASS: Không có reset chat không bảo vệ
+PASS: Đăng ký role Employer/Admin bị từ chối 403
+PASS: Hồ sơ liên kết UUID và role mới từ database
+PASS: Login chỉ trả identity, cookie bảo vệ; refresh/logout có origin guard
+PASS: Cookie login/session/refresh/logout: thay cookie và mất quyền sau logout
+PASS: Logout dọn cookie khi thiếu/giả/hết hạn/malformed session, kể cả có refresh token
+PASS: Logout dọn cookie khi provider xác minh hoặc thu hồi thất bại
+PASS: Logout sai Origin không xóa cookie; refresh sai token bị từ chối
+PASS: DEMO persona không tạo session thật; route không fallback/ntfy/cache chung
+Security: 23/23 đạt; provider/database thật: 0 request.

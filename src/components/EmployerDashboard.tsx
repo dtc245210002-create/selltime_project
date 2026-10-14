@@ -199,7 +199,7 @@ export function EmployerDashboard({
             </div>
           </div>
           <span className="text-[10px] font-medium bg-slate-950 text-emerald-400 border border-slate-800 px-2 py-0.5 rounded-md">
-            Doanh nghiệp eKYC
+            Employer DEMO · eKYC mẫu
           </span>
         </div>
 
@@ -207,7 +207,7 @@ export function EmployerDashboard({
         <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs text-slate-400">Số dư ký quỹ Escrow:</span>
+            <span className="text-xs text-slate-400">Số dư ký quỹ DEMO:</span>
             <span className="text-sm font-bold font-mono text-emerald-400">1.250.000 đ</span>
           </div>
           <button
@@ -219,7 +219,7 @@ export function EmployerDashboard({
             className="text-[11px] font-medium bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 transition-colors"
           >
             <QrCode className="w-3.5 h-3.5" />
-            <span>Nạp QR</span>
+            <span>Nạp DEMO</span>
           </button>
         </div>
       </div>
@@ -274,7 +274,7 @@ export function EmployerDashboard({
           }`}
         >
           <History className="w-3.5 h-3.5" />
-          <span>Lịch sử Escrow</span>
+          <span>Lịch sử Escrow DEMO</span>
         </button>
       </div>
 
@@ -462,7 +462,7 @@ export function EmployerDashboard({
               <div className="flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-purple-400" />
                 <span className="text-xs font-medium text-slate-300">
-                  Mã PIN Điểm Danh Quán:
+                  Mã PIN Điểm Danh DEMO:
                 </span>
               </div>
               <button
@@ -546,7 +546,7 @@ export function EmployerDashboard({
               </p>
             </div>
             <span className="text-xs text-slate-400 flex items-center gap-1 font-mono text-[11px] bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> PayOS Napas 24/7
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Escrow DEMO — không chuyển tiền
             </span>
           </div>
 
@@ -560,7 +560,7 @@ export function EmployerDashboard({
               </div>
             </div>
             <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-lg">
-              <span className="text-[10px] text-slate-400 block">Đã thanh toán cho nhân viên</span>
+              <span className="text-[10px] text-slate-400 block">Đã thanh toán mô phỏng</span>
               <div className="flex items-baseline gap-1 mt-0.5">
                 <span className="text-sm font-bold font-mono text-emerald-400">120.000 đ</span>
                 <span className="text-[10px] text-slate-500 font-mono">(1 ca)</span>
@@ -916,8 +916,8 @@ export function EmployerDashboard({
         content={qrContent}
         title={
           qrContent.includes("NAP")
-            ? "Nạp Tiền Ví Ký Quỹ Escrow"
-            : "Ký Quỹ VietQR Cho Ca Làm SOS"
+            ? "Nạp Tiền Ví Ký Quỹ DEMO"
+            : "Ký Quỹ DEMO Cho Ca Làm SOS"
         }
         onPaymentSuccess={() => {
           if (!qrContent.includes("NAP")) {

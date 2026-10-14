@@ -1,0 +1,2 @@
+PASS: kiểm tra file tĩnh offline (7 enum, 8 bảng sau migration); SQL NOT_RUN.
+Giới hạn: chỉ marker/cấu trúc tĩnh, không chứng minh coverage executable; cần manual review SQL. Chưa chứng minh SQL syntax/runtime, Auth trigger, quyền hoặc RLS trên Supabase. READY_FOR_DB_APPROVAL; chưa nghiệm thu Auth.

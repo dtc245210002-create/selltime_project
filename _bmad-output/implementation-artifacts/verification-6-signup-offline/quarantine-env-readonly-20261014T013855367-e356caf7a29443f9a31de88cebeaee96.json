@@ -1,0 +1,14 @@
+{
+  "TaskId": "c2c_a73f",
+  "Iteration": 6,
+  "Workspace": "selltime_project",
+  "WorkspaceId": "e9c367fdc841",
+  "AttemptUtc": "2026-10-14T01:38:55.2688674Z",
+  "Candidate": "C:\\Users\\admin\\AppData\\Local\\SellTimeAuthEvidencePrivate",
+  "ExistenceCmdletStatus": "SUCCESS",
+  "CandidateExists": false,
+  "Blocker": "CANDIDATE_ABSENT",
+  "NativeExit": null,
+  "FurtherStepsExecuted": false,
+  "State": "QUARANTINE_ENVIRONMENT_BLOCKED"
+}

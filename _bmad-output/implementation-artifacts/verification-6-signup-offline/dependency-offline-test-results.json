@@ -1,0 +1,58 @@
+[
+  {
+    "Case": "success",
+    "ProcessExit": 0,
+    "SavedNativeExit": 0,
+    "SavedStatusExit": 0,
+    "Expected": 0,
+    "Passed": true
+  },
+  {
+    "Case": "auth-failure",
+    "ProcessExit": 2,
+    "SavedNativeExit": 2,
+    "SavedStatusExit": 2,
+    "Expected": 2,
+    "Passed": true
+  },
+  {
+    "Case": "sql-failure",
+    "ProcessExit": 3,
+    "SavedNativeExit": 3,
+    "SavedStatusExit": 3,
+    "Expected": 3,
+    "Passed": true
+  },
+  {
+    "Case": "report-failure",
+    "ProcessExit": 3,
+    "SavedNativeExit": 3,
+    "SavedStatusExit": null,
+    "Expected": 3,
+    "Passed": true
+  },
+  {
+    "Case": "stderr-failure",
+    "ProcessExit": 2,
+    "SavedNativeExit": 2,
+    "SavedStatusExit": 2,
+    "Expected": 2,
+    "Passed": true
+  },
+  {
+    "Case": "hash-mismatch",
+    "ProcessExit": 41,
+    "SavedNativeExit": null,
+    "SavedStatusExit": null,
+    "Expected": 41,
+    "Passed": true
+  },
+  {
+    "Case": "missing-approval",
+    "ProcessExit": 40,
+    "SavedNativeExit": null,
+    "SavedStatusExit": null,
+    "Expected": 40,
+    "Passed": true
+  }
+]

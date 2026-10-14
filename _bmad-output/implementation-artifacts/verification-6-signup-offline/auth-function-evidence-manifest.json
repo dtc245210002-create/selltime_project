@@ -1,0 +1,69 @@
+{
+  "State": "OFFLINE_ONLY_NOT_EXECUTION_APPROVED",
+  "Workspace": "selltime_project",
+  "WorkspaceId": "e9c367fdc841",
+  "ProjectRef": "dauglhucpflemfdsygzr",
+  "Functions": [
+    {
+      "Key": "signup",
+      "OID": 17846,
+      "Identity": "public.st_auth_new_identity()",
+      "Owner": "postgres",
+      "SecurityDefiner": true,
+      "Volatility": "v",
+      "ReturnType": "trigger",
+      "Language": null,
+      "LanguageVerified": false,
+      "BodyMD5": "5f763cd39b9b47c3219d37daaef72c96",
+      "DefinitionMD5": null,
+      "Trigger": "st_auth_identity_created",
+      "Relation": "auth.users",
+      "TriggerType": 5
+    },
+    {
+      "Key": "ownership",
+      "OID": 17843,
+      "Identity": "public.st_auth_user_id()",
+      "Owner": "postgres",
+      "SecurityDefiner": true,
+      "Volatility": "s",
+      "ReturnType": "character varying",
+      "Language": "sql",
+      "LanguageVerified": true,
+      "BodyMD5": "738fb4b48e50dd53785392ab3f5dfed3",
+      "DefinitionMD5": "e5addb3c8e759040db7508fadd146543"
+    },
+    {
+      "Key": "role",
+      "OID": 17844,
+      "Identity": "public.st_auth_role()",
+      "Owner": "postgres",
+      "SecurityDefiner": true,
+      "Volatility": "s",
+      "ReturnType": "text",
+      "Language": "sql",
+      "LanguageVerified": true,
+      "BodyMD5": "122b1309e6548a8dcfd4ce30be1e2de8",
+      "DefinitionMD5": "c2554d154ec5de15887e8a17a07713a3"
+    },
+    {
+      "Key": "protection",
+      "OID": 17849,
+      "Identity": "public.st_auth_immutable_account()",
+      "Owner": "postgres",
+      "SecurityDefiner": false,
+      "Volatility": "v",
+      "ReturnType": "trigger",
+      "Language": "plpgsql",
+      "LanguageVerified": true,
+      "BodyMD5": "4226f087fc497ad3d0bd862ec0178e6f",
+      "DefinitionMD5": "0e30b09fa59118a102bf824285dc3148",
+      "Trigger": "st_auth_immutable_account",
+      "Relation": "public.users",
+      "TriggerType": 19
+    }
+  ],
+  "RawCollectionApproved": false,
+  "SanitizedReleaseApproved": false,
+  "PolicyCollectionApproved": false
+}

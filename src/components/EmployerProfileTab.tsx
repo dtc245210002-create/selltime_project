@@ -111,7 +111,7 @@ export function EmployerProfileTab({
                     </h2>
                     {profile.verified_badge && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> Đã eKYC
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" /> eKYC mẫu (DEMO)
                       </span>
                     )}
                   </div>
@@ -275,11 +275,11 @@ export function EmployerProfileTab({
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-semibold text-white">
-              Số Dư Ký Quỹ Escrow
+              Số Dư Ký Quỹ DEMO
             </span>
           </div>
           <span className="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded-md font-mono">
-            NAPAS 24/7
+            DEMO — không chuyển tiền
           </span>
         </div>
 
@@ -289,7 +289,7 @@ export function EmployerProfileTab({
               {escrowBalance.toLocaleString("vi-VN")} đ
             </span>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Bảo đảm giải ngân cho ~8 ca tiếp theo
+              Số dư mô phỏng, chưa có ký quỹ thật
             </p>
           </div>
 
@@ -298,7 +298,7 @@ export function EmployerProfileTab({
             className="py-1.5 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-md font-medium text-xs flex items-center gap-1.5 transition-colors"
           >
             <QrCode className="w-3.5 h-3.5" />
-            <span>Nạp Quỹ VietQR</span>
+            <span>Nạp Quỹ DEMO</span>
           </button>
         </div>
       </div>
@@ -309,7 +309,7 @@ export function EmployerProfileTab({
           <div className="flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-slate-400" />
             <h3 className="text-xs font-semibold text-white">
-              Mã PIN Điểm Danh Dự Phòng
+              Mã PIN Điểm Danh DEMO
             </h3>
           </div>
           <span className="text-[10px] text-slate-500">Cung cấp khi ứng viên mất sóng GPS</span>
@@ -317,7 +317,7 @@ export function EmployerProfileTab({
 
         {pinSaveSuccess && (
           <div className="bg-emerald-950/70 border border-emerald-800/80 rounded-md p-2 text-xs text-emerald-300">
-            ✓ Đã cập nhật mã PIN điểm danh quầy mới thành công!
+            ✓ Đã cập nhật PIN mẫu tại màn hình DEMO; không thay đổi PIN xác thực thật.
           </div>
         )}
 

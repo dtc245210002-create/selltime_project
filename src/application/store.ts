@@ -3,7 +3,7 @@
 // Chứa dữ liệu thực tế: Sinh viên Huy (TNUT) & Chị Lan Cafe
 // ==========================================================
 
-import {
+import type {
   AvailabilitySlot,
   CandidateFilterCriteria,
   CandidateProfile,
@@ -90,7 +90,7 @@ export const INITIAL_SHIFTS: Shift[] = [
     duration_hours: 4,
     period: "EVENING",
     hourly_wage: 32000,
-    total_budget: 128000,
+    total_budget: 153000,
     required_candidates: 1,
     filled_candidates: 0,
     is_sos: true,

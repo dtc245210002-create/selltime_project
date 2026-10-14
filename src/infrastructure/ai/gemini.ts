@@ -71,7 +71,16 @@ Hãy trích xuất và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢ
     if (apiKey && apiKey !== "none") {
       const result = await geminiModel.generateContent(prompt);
       const responseText = result.response.text();
-      return extractJsonFromString(responseText);
+      const parsed = extractJsonFromString(responseText);
+      return {
+        ...parsed,
+        _metadata: {
+          source: "gemini",
+          provider: "Google Gemini",
+          model: "gemini-1.5-flash",
+          is_fallback: false,
+        },
+      };
     }
     throw new Error("No API key configured");
   } catch (error) {
@@ -101,6 +110,12 @@ Hãy trích xuất và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢ
         "Nên bổ sung thêm kỹ năng thao tác máy tính tiền POS KiotViet",
         "Có thể luyện tập thêm phỏng vấn STAR để tăng điểm Pin Uy Tín",
       ],
+      _metadata: {
+        source: "local_mock",
+        provider: "Local Heuristic",
+        model: "fallback-heuristic",
+        is_fallback: true,
+      },
     };
   }
 }
@@ -133,7 +148,16 @@ Hãy phân tích và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢNG
     if (apiKey && apiKey !== "none") {
       const result = await geminiModel.generateContent(prompt);
       const responseText = result.response.text();
-      return extractJsonFromString(responseText);
+      const parsed = extractJsonFromString(responseText);
+      return {
+        ...parsed,
+        _metadata: {
+          source: "gemini",
+          provider: "Google Gemini",
+          model: "gemini-1.5-flash",
+          is_fallback: false,
+        },
+      };
     }
     throw new Error("No API key configured");
   } catch (error) {
@@ -181,6 +205,12 @@ Hãy phân tích và trả về KẾT QUẢ DUY NHẤT LÀ MỘT ĐỐI TƯỢNG
       ai_explanation: aiExplanation,
       gap_warning: gapWarning,
       preparation_tip: prepTip,
+      _metadata: {
+        source: "local_mock",
+        provider: "Local Heuristic",
+        model: "fallback-heuristic",
+        is_fallback: true,
+      },
     };
   }
 }
@@ -238,20 +268,39 @@ Interview Rules:
       });
 
       const result = await chat.sendMessage(lastMessage);
-      return result.response.text();
+      return {
+        reply: result.response.text(),
+        _metadata: {
+          source: "gemini",
+          provider: "Google Gemini",
+          model: "gemini-1.5-flash",
+          is_fallback: false,
+        },
+      };
     }
     throw new Error("No API key configured");
   } catch (error) {
     console.warn("AI Interview Fallback kích hoạt:", error);
     const count = conversationHistory.filter((m) => m.role === "user").length;
+    let fallbackText = "";
     
     if (count === 1) {
-      return "Chị rất ấn tượng với cách xử lý bình tĩnh của em! Câu trả lời rất có trách nhiệm.\n\n👉 Câu 2: Nếu trong ca làm việc có đồng nghiệp đến muộn hoặc bị ốm đột xuất khiến em phải gánh thêm quầy order, em sẽ sắp xếp công việc thế nào để không bị quá tải?";
+      fallbackText = "Chị rất ấn tượng với cách xử lý bình tĩnh của em! Câu trả lời rất có trách nhiệm.\n\n👉 Câu 2: Nếu trong ca làm việc có đồng nghiệp đến muộn hoặc bị ốm đột xuất khiến em phải gánh thêm quầy order, em sẽ sắp xếp công việc thế nào để không bị quá tải?";
     } else if (count === 2) {
-      return "Cách em ưu tiên công việc rất linh hoạt và chuyên nghiệp!\n\n👉 Câu 3 (Câu cuối): Khi thanh toán tiền thừa cho khách, nếu phát hiện máy POS gặp sự cố mạng hoặc khách bảo tiền thừa không đủ, em sẽ giải thích và xử lý ra sao?";
+      fallbackText = "Cách em ưu tiên công việc rất linh hoạt và chuyên nghiệp!\n\n👉 Câu 3 (Câu cuối): Khi thanh toán tiền thừa cho khách, nếu phát hiện máy POS gặp sự cố mạng hoặc khách bảo tiền thừa không đủ, em sẽ giải thích và xử lý ra sao?";
     } else {
-      return "🎉 Chúc mừng em đã hoàn thành xuất sắc buổi phỏng vấn giả lập STAR!\n\n📊 BÁO CÁO NĂNG LỰC STAR (CHỊ LAN AI):\n• Điểm kỹ năng xử lý tình huống: 94 / 100\n• Đánh giá: Thái độ cầu tiến, giao tiếp lịch thiệp, tư duy dịch vụ khách hàng xuất sắc.\n• Khuyến nghị: Đã cộng +2% Pin Uy Tín (PartyMode Trust Battery) vào hồ sơ của em!";
+      fallbackText = "🎉 Chúc mừng em đã hoàn thành xuất sắc buổi phỏng vấn giả lập STAR!\n\n📊 BÁO CÁO NĂNG LỰC STAR (CHỊ LAN AI):\n• Điểm kỹ năng xử lý tình huống: 94 / 100\n• Đánh giá: Thái độ cầu tiến, giao tiếp lịch thiệp, tư duy dịch vụ khách hàng xuất sắc.\n• Khuyến nghị: Đã cộng +2% Pin Uy Tín (PartyMode Trust Battery) vào hồ sơ của em!";
     }
+
+    return {
+      reply: fallbackText,
+      _metadata: {
+        source: "local_mock",
+        provider: "Local Mock",
+        model: "fallback-scripted",
+        is_fallback: true,
+      },
+    };
   }
 }
 

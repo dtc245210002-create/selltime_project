@@ -1,0 +1,136 @@
+/******** QUERY *********/
+BEGIN READ ONLY;
+/************************/
+
+BEGIN
+/******** QUERY *********/
+SET LOCAL statement_timeout = '20s';
+/************************/
+
+SET
+/******** QUERY *********/
+SET LOCAL lock_timeout = '2s';
+/************************/
+
+SET
+/******** QUERY *********/
+SELECT current_database(), current_user, current_setting('server_version');
+/************************/
+
+ current_database | current_user | current_setting 
+------------------+--------------+-----------------
+ postgres         | postgres     | 17.6
+(1 row)
+
+/******** QUERY *********/
+SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid=pg_backend_pid();
+/************************/
+
+ ssl | version |         cipher         
+-----+---------+------------------------
+ t   | TLSv1.3 | TLS_AES_256_GCM_SHA384
+(1 row)
+
+/******** QUERY *********/
+SELECT t.tgname,t.tgenabled,t.tgtype,n.nspname AS function_schema,p.proname,
+  pg_get_function_identity_arguments(p.oid) AS signature,
+  pg_get_userbyid(p.proowner) AS owner,p.prosecdef,
+  p.prorettype='trigger'::regtype AS returns_trigger,
+  p.proconfig=ARRAY['search_path=""'] AS has_empty_search_path,
+  md5(p.prosrc) AS body_hash
+FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE t.tgrelid=to_regclass('auth.users') AND NOT t.tgisinternal
+ORDER BY t.tgname;
+/************************/
+
+          tgname          | tgenabled | tgtype | function_schema |       proname        | signature |  owner   | prosecdef | returns_trigger | has_empty_search_path |            body_hash             
+--------------------------+-----------+--------+-----------------+----------------------+-----------+----------+-----------+-----------------+-----------------------+----------------------------------
+ st_auth_identity_created | O         |      5 | public          | st_auth_new_identity |           | postgres | t         | t               | t                     | 5f763cd39b9b47c3219d37daaef72c96
+(1 row)
+
+/******** QUERY *********/
+SELECT n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) AS signature,
+  pg_get_userbyid(p.proowner) AS owner,p.prosecdef,md5(p.prosrc) AS body_hash
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND p.proname IN ('handle_auth_signup','current_app_user_id','current_app_role','set_employer_role');
+/************************/
+
+ nspname | proname | signature | owner | prosecdef | body_hash 
+---------+---------+-----------+-------+-----------+-----------
+(0 rows)
+
+/******** QUERY *********/
+SELECT datname,datlocprovider,datcollate,datctype,datcollversion,
+  pg_database_collation_actual_version(oid) AS actual_database_version
+FROM pg_database WHERE datname=current_database();
+/************************/
+
+ datname  | datlocprovider | datcollate  |  datctype   | datcollversion | actual_database_version 
+----------+----------------+-------------+-------------+----------------+-------------------------
+ postgres | i              | en_US.UTF-8 | en_US.UTF-8 | 153.121        | 153.121
+(1 row)
+
+/******** QUERY *********/
+SELECT n.nspname,c.collname,c.collprovider,c.collisdeterministic,c.collversion,
+  pg_collation_actual_version(c.oid) AS actual_version
+FROM pg_collation c JOIN pg_namespace n ON n.oid=c.collnamespace
+WHERE c.oid IN (SELECT attcollation FROM pg_attribute
+  WHERE attrelid=to_regclass('public.users') AND attname='email' AND NOT attisdropped)
+  OR (n.nspname='pg_catalog' AND c.collname='default');
+/************************/
+
+  nspname   | collname | collprovider | collisdeterministic | collversion | actual_version 
+------------+----------+--------------+---------------------+-------------+----------------
+ pg_catalog | default  | d            | t                   |             | 153.121
+(1 row)
+
+/******** QUERY *********/
+SELECT conname,contype,convalidated,condeferrable,condeferred,
+  confrelid::regclass AS referenced_relation,confdeltype,confupdtype,confmatchtype,
+  ARRAY(SELECT a.attname FROM unnest(conkey) WITH ORDINALITY k(num,seq)
+    JOIN pg_attribute a ON a.attrelid=conrelid AND a.attnum=k.num ORDER BY seq) AS columns,
+  ARRAY(SELECT a.attname FROM unnest(confkey) WITH ORDINALITY k(num,seq)
+    JOIN pg_attribute a ON a.attrelid=confrelid AND a.attnum=k.num ORDER BY seq) AS referenced_columns
+FROM pg_constraint WHERE conrelid=to_regclass('public.users') AND contype IN ('f','u','p');
+/************************/
+
+            conname            | contype | convalidated | condeferrable | condeferred | referenced_relation | confdeltype | confupdtype | confmatchtype |    columns     | referenced_columns 
+-------------------------------+---------+--------------+---------------+-------------+---------------------+-------------+-------------+---------------+----------------+--------------------
+ st_auth_users_identity_fk     | f       | t            | f             | f           | auth.users          | n           | a           | s             | {auth_user_id} | {id}
+ st_auth_users_identity_unique | u       | t            | f             | f           | -                   |             |             |               | {auth_user_id} | {}
+ users_email_key               | u       | t            | f             | f           | -                   |             |             |               | {email}        | {}
+ users_pkey                    | p       | t            | f             | f           | -                   |             |             |               | {id}           | {}
+(4 rows)
+
+/******** QUERY *********/
+SELECT indexrelid::regclass AS index_name,indisunique,indisvalid,indisready,
+  indkey,indclass,indcollation,indpred IS NOT NULL AS partial,
+  indexprs IS NOT NULL AS expression_index,md5(pg_get_indexdef(indexrelid)) AS definition_hash
+FROM pg_index WHERE indrelid=to_regclass('public.users');
+/************************/
+
+          index_name           | indisunique | indisvalid | indisready | indkey | indclass | indcollation | partial | expression_index |         definition_hash          
+-------------------------------+-------------+------------+------------+--------+----------+--------------+---------+------------------+----------------------------------
+ users_pkey                    | t           | t          | t          | 1      | 3126     | 100          | f       | f                | 337abd2e2c42117357b05ac25862edca
+ users_email_key               | t           | t          | t          | 2      | 3126     | 100          | f       | f                | cb4a94a885d938f3a568be8a2c91836a
+ st_auth_users_identity_unique | t           | t          | t          | 11     | 10065    | 0            | f       | f                | 5970cde8d7d601e31400429add841d50
+(3 rows)
+
+/******** QUERY *********/
+SELECT d.classid::regclass AS dependent_catalog,d.objid,d.objsubid,d.deptype,
+  pg_describe_object(d.classid,d.objid,d.objsubid) AS object_identity
+FROM pg_depend d JOIN pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid
+WHERE d.refclassid='pg_class'::regclass AND a.attrelid=to_regclass('public.users') AND a.attname='email';
+/************************/
+
+ dependent_catalog | objid | objsubid | deptype |              object_identity              
+-------------------+-------+----------+---------+-------------------------------------------
+ pg_constraint     | 17683 |        0 | a       | constraint users_email_key on table users
+(1 row)
+
+/******** QUERY *********/
+COMMIT;
+/************************/
+
+COMMIT

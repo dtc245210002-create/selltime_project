@@ -1,0 +1,10 @@
+{
+  "synthetic_only": true,
+  "tests_run": 17,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "real_quarantine_probed": false,
+  "real_psql_run": false,
+  "actual_console_verified": false
+}

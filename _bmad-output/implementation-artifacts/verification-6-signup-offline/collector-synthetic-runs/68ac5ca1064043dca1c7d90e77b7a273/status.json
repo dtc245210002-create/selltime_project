@@ -1,0 +1,16 @@
+{
+  "offline": true,
+  "case": "dual-pressure",
+  "gate": "COLLECTION_IO_FAILED",
+  "native_exit": 1,
+  "raw_acquired": false,
+  "released": false,
+  "actual_quarantine_verified": false,
+  "run_id": "68ac5ca1064043dca1c7d90e77b7a273",
+  "pump_threads_stopped": true,
+  "bytes": {
+    "stdout": 0,
+    "stderr": 0
+  },
+  "native_exit_saved": true
+}

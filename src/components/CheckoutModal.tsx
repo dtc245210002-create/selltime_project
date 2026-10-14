@@ -13,12 +13,13 @@ import {
   Wallet,
 } from "lucide-react";
 import { Shift } from "../domain/types";
+import { calculateCompletionReward } from "../domain/trust-battery";
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   shift: Shift | null;
-  onConfirmCheckout: (shiftId: string, earnedAmount: number) => void;
+  onConfirmCheckout: (shift: Shift, earnedAmount: number, rating?: number) => void;
 }
 
 export function CheckoutModal({
@@ -34,14 +35,17 @@ export function CheckoutModal({
 
   if (!isOpen || !shift) return null;
 
-  const totalEarned = shift.total_budget + (shift.is_sos ? shift.sos_bonus_amount || 0 : 0);
+  const baseWage = shift.hourly_wage * shift.duration_hours;
+  const sosBonus = shift.is_sos ? (shift.sos_bonus_amount || 0) : 0;
+  const totalEarned = baseWage + sosBonus;
+  const completionReward = calculateCompletionReward(Boolean(shift.is_sos), rating);
 
   const handleCheckoutSubmit = () => {
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
       setIsDone(true);
-      onConfirmCheckout(shift.id, totalEarned);
+      onConfirmCheckout(shift, totalEarned, rating);
     }, 1500);
   };
 
@@ -56,10 +60,10 @@ export function CheckoutModal({
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white leading-snug">
-                Hoàn Thành Ca & Nhận Tiền Ngay 💵
+                Checkout DEMO & Cộng Ví Mẫu
               </h3>
               <p className="text-xs text-slate-400">
-                Sell Time cam kết bảo chứng thù lao chuyển thẳng vào ví bạn
+                Mô phỏng hoàn thành ca; không chuyển tiền hoặc xác nhận công thật
               </p>
             </div>
           </div>
@@ -93,14 +97,14 @@ export function CheckoutModal({
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Lương cơ bản</span>
                     <span className="text-xs font-mono font-bold text-slate-300">
-                      {shift.total_budget.toLocaleString("vi-VN")} đ
+                      {baseWage.toLocaleString("vi-VN")} đ
                     </span>
                   </div>
                   {shift.is_sos && (
                     <div>
                       <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">Thưởng SOS</span>
                       <span className="text-xs font-mono font-bold text-rose-400">
-                        +{(shift.sos_bonus_amount || 0).toLocaleString("vi-VN")} đ
+                        +{sosBonus.toLocaleString("vi-VN")} đ
                       </span>
                     </div>
                   )}
@@ -120,7 +124,7 @@ export function CheckoutModal({
                 </div>
                 <div className="text-xs">
                   <span className="font-bold text-white block">
-                    Được cộng +3% Pin Uy Tín Sinh Viên 🔋
+                    Được cộng +{completionReward.rewardPoints}% Pin Uy Tín Sinh Viên 🔋
                   </span>
                   <span className="text-slate-400 text-[11px] leading-relaxed">
                     Hoàn thành ca tốt và đúng hẹn giúp bạn luôn được ưu tiên nhận các ca thưởng nóng cao nhất!
@@ -169,12 +173,12 @@ export function CheckoutModal({
                 {isProcessing ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Sell Time đang chuyển tiền vào ví bạn...</span>
+                    <span>Đang cộng số dư ví DEMO...</span>
                   </>
                 ) : (
                   <>
                     <Wallet className="w-4 h-4" />
-                    <span>Xác Nhận Nhận Lương {totalEarned.toLocaleString("vi-VN")} đ</span>
+                    <span>Xác Nhận Checkout DEMO {totalEarned.toLocaleString("vi-VN")} đ</span>
                   </>
                 )}
               </button>
@@ -188,28 +192,28 @@ export function CheckoutModal({
 
               <div>
                 <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
-                  🎉 Ting Ting! Tiền Đã Vào Ví
+                  🎉 Đã Cộng Số Dư DEMO
                 </span>
                 <h4 className="text-lg font-bold text-white">
                   +{totalEarned.toLocaleString("vi-VN")} đ
                 </h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                  Thù lao ca làm đã được <strong className="text-emerald-400">Sell Time bảo chứng an toàn 100%</strong> và cộng tức thì vào số dư ví của bạn!
+                  Số tiền mô phỏng đã cộng vào <strong className="text-emerald-400">ví DEMO</strong>; chưa có giao dịch ngân hàng.
                 </p>
               </div>
 
               <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800 text-left text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Mã bảo chứng Sell Time:</span>
+                  <span className="text-slate-500">Mã ca DEMO:</span>
                   <span className="font-mono font-bold text-slate-200">#ST-{shift.id.slice(-6).toUpperCase()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Kênh thanh toán:</span>
-                  <span className="font-medium text-purple-400">VietQR Napas 24/7 PayOS</span>
+                  <span className="font-medium text-purple-400">Ví local DEMO</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Thời gian nhận tiền:</span>
-                  <span className="font-mono font-medium text-emerald-400">Tức thì (0.8s)</span>
+                  <span className="text-slate-500">Trạng thái mô phỏng:</span>
+                  <span className="font-mono font-medium text-emerald-400">Đã cập nhật ví DEMO</span>
                 </div>
               </div>
 
@@ -217,7 +221,7 @@ export function CheckoutModal({
                 onClick={onClose}
                 className="w-full py-2.5 rounded-md font-semibold text-xs bg-purple-600 hover:bg-purple-500 text-white transition-colors shadow-sm"
               >
-                Tuyệt Vời! Xem Ví & Rút Tiền Ngay
+                Xem Ví DEMO
               </button>
             </div>
           )}

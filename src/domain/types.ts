@@ -5,6 +5,16 @@
 
 export type UserRole = "CANDIDATE" | "EMPLOYER" | "ADMIN";
 
+// Danh tính thật chỉ được tạo sau khi server xác minh Auth và hồ sơ database.
+export interface VerifiedIdentity {
+  authUserId: string;
+  userId: string;
+  role: UserRole;
+  fullName: string;
+  avatarUrl?: string;
+  email: string;
+}
+
 export type WorkType = "PART_TIME" | "FULL_TIME" | "GIG";
 
 export type ShiftPeriod = "MORNING" | "LUNCH" | "AFTERNOON" | "EVENING" | "NIGHT";

@@ -104,6 +104,12 @@ export function AiCoachModal({
   const [isAiReplying, setIsAiReplying] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [aiMetadata, setAiMetadata] = useState<{
+    source: string;
+    provider?: string;
+    model?: string;
+    is_fallback?: boolean;
+  } | null>(null);
 
   // Danh sách voice của hệ thống
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -270,8 +276,17 @@ export function AiCoachModal({
         setMessages((prev) => [...prev, { role: "model" as const, text: data.reply }]);
         speakText(data.reply);
       }
+      if (data._metadata) {
+        setAiMetadata(data._metadata);
+      }
     } catch (err) {
       console.error(err);
+      setAiMetadata({
+        source: "local_mock",
+        provider: "Local Mock",
+        model: "fallback-scripted",
+        is_fallback: true,
+      });
     } finally {
       setIsAiReplying(false);
     }
@@ -290,11 +305,20 @@ export function AiCoachModal({
       });
       const data = await res.json();
       setCvResult(data);
+      if (data._metadata) {
+        setAiMetadata(data._metadata);
+      }
       if (onUpdateSkills && data.extracted_skills) {
         onUpdateSkills(data.extracted_skills);
       }
     } catch (err) {
       console.error(err);
+      setAiMetadata({
+        source: "local_mock",
+        provider: "Local Heuristic",
+        model: "fallback-heuristic",
+        is_fallback: true,
+      });
     } finally {
       setIsAnalyzingCv(false);
     }
@@ -321,13 +345,25 @@ export function AiCoachModal({
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-white">
                   Sell Time AI Voice & Interview
                 </h2>
-                <span className="text-[10px] bg-purple-950/60 text-purple-300 px-2 py-0.5 rounded-md font-semibold border border-purple-800/60">
-                  Gemini Flash STAR
-                </span>
+                {aiMetadata ? (
+                  aiMetadata.source === "gemini" && !aiMetadata.is_fallback ? (
+                    <span className="text-[10px] bg-purple-950/60 text-purple-300 px-2 py-0.5 rounded-md font-semibold border border-purple-800/60">
+                      Nguồn: {aiMetadata.provider || "Google Gemini"} {aiMetadata.model || "1.5 Flash"}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-950/60 text-amber-300 px-2 py-0.5 rounded-md font-semibold border border-amber-800/60">
+                      Nguồn: Dữ liệu mẫu cục bộ
+                    </span>
+                  )
+                ) : (
+                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-medium border border-slate-700">
+                    Mô phỏng chuẩn STAR
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Luyện phỏng vấn đa ngôn ngữ theo chuẩn STAR & Bóc tách CV thông minh

@@ -1,0 +1,14 @@
+
+> selltime-platform@0.1.0 build
+> node --require ./scripts/windows-realpath.cjs node_modules/next/dist/bin/next build
+
+   ▲ Next.js 15.5.25
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+Failed to compile.
+
+Error: EPERM: operation not permitted, mkdir 'C:\Users\admin\OneDrive\Desktop\selltime_project\.next\server\app\auth'
+
+
+> Build failed because of webpack errors

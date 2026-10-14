@@ -1,0 +1,55 @@
+ M .env.example
+ M .gitignore
+ M package.json
+D  "src/Password-Supabase/New Text Document.txt"
+ M src/__tests__/selltime-core.test.mjs
+ M src/app/api/ai/interview/route.ts
+ M src/app/api/messages/route.ts
+ M src/app/api/shifts/route.ts
+ M src/app/page.tsx
+ M src/application/store.ts
+ M src/components/AiCoachModal.tsx
+ M src/components/AuthModal.tsx
+ M src/components/CheckinModal.tsx
+ M src/components/CheckoutModal.tsx
+ M src/components/EmployerDashboard.tsx
+ M src/components/EmployerProfileTab.tsx
+ M src/components/LoginRequiredCard.tsx
+ M src/components/MessagesTab.tsx
+ M src/components/MobileShell.tsx
+ M src/components/MyShiftsTab.tsx
+ M src/components/PaymentQrModal.tsx
+ M src/components/ProfileTab.tsx
+ M src/components/RoleSwitcher.tsx
+ M src/components/ShiftCard.tsx
+ M src/domain/matching-engine.ts
+ M src/domain/trust-battery.ts
+ M src/domain/types.ts
+ M src/infrastructure/ai/gemini.ts
+ M src/infrastructure/database/supabaseClient.ts
+ M src/infrastructure/database/supabaseRepo.ts
+?? _bmad-output/implementation-artifacts/deferred-work.md
+?? _bmad-output/implementation-artifacts/spec-6-auth-and-ownership.md
+?? _bmad-output/implementation-artifacts/spec-6-bounded-request-body.md
+?? _bmad-output/implementation-artifacts/spec-6-rls-offline-preparation.md
+?? _bmad-output/implementation-artifacts/spec-6-shift-validation.md
+?? _bmad-output/implementation-artifacts/spec-6-signup-offline.md
+?? _bmad-output/implementation-artifacts/verification-6-body-hardening/
+?? _bmad-output/implementation-artifacts/verification-6-offline/
+?? _bmad-output/implementation-artifacts/verification-6-remediation/
+?? _bmad-output/implementation-artifacts/verification-6-shift-validation/
+?? _bmad-output/implementation-artifacts/verification-6-signup-offline/
+?? _bmad-output/implementation-artifacts/verification-6/
+?? _bmad-output/planning-artifacts/danh-gia-san-sang-thi-truong-2026-10-07.md
+?? _bmad-output/specs/
+?? docs/
+?? output/
+?? scripts/
+?? src/__tests__/auth-ownership.test.mjs
+?? src/__tests__/build-realpath.test.cjs
+?? src/__tests__/request-body.test.mjs
+?? src/app/api/auth/
+?? src/app/auth/
+?? src/database/migrations/
+?? src/database/tests/
+?? src/infrastructure/auth/

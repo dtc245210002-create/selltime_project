@@ -1,0 +1,200 @@
+/******** QUERY *********/
+BEGIN READ ONLY;
+/************************/
+
+BEGIN
+/******** QUERY *********/
+SET LOCAL statement_timeout = '20s';
+/************************/
+
+SET
+/******** QUERY *********/
+SET LOCAL lock_timeout = '2s';
+/************************/
+
+SET
+/******** QUERY *********/
+SET LOCAL row_security = off;
+/************************/
+
+SET
+/******** QUERY *********/
+SELECT current_database() AS database_name, current_user AS effective_role,
+  session_user AS session_role, current_setting('server_version') AS postgres_version,
+  current_setting('server_encoding') AS encoding;
+/************************/
+
+ database_name | effective_role | session_role | postgres_version | encoding 
+---------------+----------------+--------------+------------------+----------
+ postgres      | postgres       | postgres     | 17.6             | UTF8
+(1 row)
+
+/******** QUERY *********/
+SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid = pg_backend_pid();
+/************************/
+
+ ssl | version |         cipher         
+-----+---------+------------------------
+ t   | TLSv1.3 | TLS_AES_256_GCM_SHA384
+(1 row)
+
+/******** QUERY *********/
+SELECT n.nspname, c.relname, c.relkind, c.relrowsecurity
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE (n.nspname = 'auth' AND c.relname IN ('users','identities'))
+   OR (n.nspname = 'public' AND c.relname IN ('users','candidate_profiles','employer_profiles',
+     'shifts','shift_applications','conversations','messages','escrow_transactions'))
+ORDER BY n.nspname,c.relname;
+/************************/
+
+ nspname |       relname       | relkind | relrowsecurity 
+---------+---------------------+---------+----------------
+ auth    | identities          | r       | t
+ auth    | users               | r       | t
+ public  | candidate_profiles  | r       | t
+ public  | conversations       | r       | t
+ public  | employer_profiles   | r       | t
+ public  | escrow_transactions | r       | t
+ public  | messages            | r       | t
+ public  | shift_applications  | r       | t
+ public  | shifts              | r       | t
+ public  | users               | r       | t
+(10 rows)
+
+/******** QUERY *********/
+SELECT a.attname, format_type(a.atttypid,a.atttypmod) AS column_type,
+  a.attnotnull, c.collname, c.collprovider, c.collisdeterministic, c.collversion,
+  pg_collation_actual_version(c.oid) AS actual_collation_version
+FROM pg_attribute a LEFT JOIN pg_collation c ON c.oid=a.attcollation
+WHERE a.attrelid=to_regclass('public.users') AND a.attnum>0 AND NOT a.attisdropped
+  AND a.attname IN ('id','email','auth_user_id','role','is_kyc_verified');
+/************************/
+
+     attname     |      column_type       | attnotnull | collname | collprovider | collisdeterministic | collversion | actual_collation_version 
+-----------------+------------------------+------------+----------+--------------+---------------------+-------------+--------------------------
+ role            | user_role              | t          |          |              |                     |             | 
+ is_kyc_verified | boolean                | f          |          |              |                     |             | 
+ auth_user_id    | uuid                   | f          |          |              |                     |             | 
+ id              | character varying(50)  | t          | default  | d            | t                   |             | 153.121
+ email           | character varying(120) | t          | default  | d            | t                   |             | 153.121
+(5 rows)
+
+/******** QUERY *********/
+SELECT conname,contype,convalidated,condeferrable,md5(pg_get_constraintdef(oid)) AS definition_hash
+FROM pg_constraint WHERE conrelid=to_regclass('public.users') AND contype IN ('p','u','f');
+/************************/
+
+            conname            | contype | convalidated | condeferrable |         definition_hash          
+-------------------------------+---------+--------------+---------------+----------------------------------
+ st_auth_users_identity_fk     | f       | t            | f             | f91277b3e8169a1b117532ba0a21d069
+ st_auth_users_identity_unique | u       | t            | f             | 3939596b6b0eb0c3a60cbfda6e98ad0c
+ users_email_key               | u       | t            | f             | cb128631a72269d9e93b234b2814eb06
+ users_pkey                    | p       | t            | f             | 4c6419b3704337bbfe50f018842a9ad3
+(4 rows)
+
+/******** QUERY *********/
+SELECT c.relname, i.indisunique,i.indisvalid,i.indisready,
+  md5(pg_get_indexdef(i.indexrelid)) AS definition_hash
+FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid=to_regclass('public.users');
+/************************/
+
+            relname            | indisunique | indisvalid | indisready |         definition_hash          
+-------------------------------+-------------+------------+------------+----------------------------------
+ users_pkey                    | t           | t          | t          | 337abd2e2c42117357b05ac25862edca
+ users_email_key               | t           | t          | t          | cb4a94a885d938f3a568be8a2c91836a
+ st_auth_users_identity_unique | t           | t          | t          | 5970cde8d7d601e31400429add841d50
+(3 rows)
+
+/******** QUERY *********/
+SELECT rolname,rolsuper,rolbypassrls FROM pg_roles
+WHERE rolname IN ('anon','authenticated','supabase_auth_admin');
+/************************/
+
+       rolname       | rolsuper | rolbypassrls 
+---------------------+----------+--------------
+ authenticated       | f        | f
+ anon                | f        | f
+ supabase_auth_admin | f        | f
+(3 rows)
+
+/******** QUERY *********/
+SELECT r.rolname,a.attname,
+  has_column_privilege(r.oid,a.attrelid,a.attnum,'SELECT') AS can_select,
+  has_column_privilege(r.oid,a.attrelid,a.attnum,'INSERT') AS can_insert,
+  has_column_privilege(r.oid,a.attrelid,a.attnum,'UPDATE') AS can_update,
+  a.attacl IS NOT NULL AS has_explicit_column_acl
+FROM pg_roles r CROSS JOIN pg_attribute a
+WHERE r.rolname IN ('anon','authenticated') AND a.attrelid=to_regclass('public.users')
+  AND a.attnum>0 AND NOT a.attisdropped
+  AND a.attname IN ('role','auth_user_id','is_kyc_verified','kyc_id_number','email');
+/************************/
+
+    rolname    |     attname     | can_select | can_insert | can_update | has_explicit_column_acl 
+---------------+-----------------+------------+------------+------------+-------------------------
+ authenticated | email           | t          | f          | f          | f
+ anon          | email           | f          | f          | f          | f
+ authenticated | role            | t          | f          | f          | f
+ anon          | role            | f          | f          | f          | f
+ authenticated | kyc_id_number   | t          | f          | f          | f
+ anon          | kyc_id_number   | f          | f          | f          | f
+ authenticated | is_kyc_verified | t          | f          | f          | f
+ anon          | is_kyc_verified | f          | f          | f          | f
+ authenticated | auth_user_id    | t          | f          | f          | f
+ anon          | auth_user_id    | f          | f          | f          | f
+(10 rows)
+
+/******** QUERY *********/
+SELECT polname,polcmd,polpermissive FROM pg_policy
+WHERE polrelid=to_regclass('public.users');
+/************************/
+
+      polname      | polcmd | polpermissive 
+-------------------+--------+---------------
+ st_auth_users_own | r      | t
+(1 row)
+
+/******** QUERY *********/
+SELECT t.tgname,t.tgenabled,p.prosecdef,p.prorettype='trigger'::regtype AS returns_trigger,
+  p.proconfig=ARRAY['search_path=""'] AS has_empty_search_path,
+  md5(p.prosrc) AS body_hash
+FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+WHERE t.tgrelid=to_regclass('auth.users') AND t.tgname='selltime_auth_signup';
+/************************/
+
+ tgname | tgenabled | prosecdef | returns_trigger | has_empty_search_path | body_hash 
+--------+-----------+-----------+-----------------+-----------------------+-----------
+(0 rows)
+
+/******** QUERY *********/
+SELECT d.classid::regclass AS dependent_catalog,count(*) AS dependency_count
+FROM pg_depend d JOIN pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid
+WHERE d.refclassid='pg_class'::regclass AND a.attrelid=to_regclass('public.users') AND a.attname='email'
+GROUP BY d.classid;
+/************************/
+
+ dependent_catalog | dependency_count 
+-------------------+------------------
+ pg_constraint     |                1
+(1 row)
+
+/******** QUERY *********/
+SELECT sample,encode(convert_to(lower(sample COLLATE "default"),'UTF8'),'hex') AS lower_default_utf8
+FROM (VALUES ('Auth007-Preflight@Test.Invalid'),('I@test.invalid'),(U&'\0130@test.invalid'),
+  (U&'\0131@test.invalid'),(U&'\00E9@test.invalid'),(U&'e\0301@test.invalid')) fixtures(sample);
+/************************/
+
+             sample             |                      lower_default_utf8                      
+--------------------------------+--------------------------------------------------------------
+ Auth007-Preflight@Test.Invalid | 617574683030372d707265666c6967687440746573742e696e76616c6964
+ I@test.invalid                 | 6940746573742e696e76616c6964
+ İ@test.invalid                 | 69cc8740746573742e696e76616c6964
+ ı@test.invalid                 | c4b140746573742e696e76616c6964
+ é@test.invalid                 | c3a940746573742e696e76616c6964
+ é@test.invalid                 | 65cc8140746573742e696e76616c6964
+(6 rows)
+
+/******** QUERY *********/
+COMMIT;
+/************************/
+
+COMMIT

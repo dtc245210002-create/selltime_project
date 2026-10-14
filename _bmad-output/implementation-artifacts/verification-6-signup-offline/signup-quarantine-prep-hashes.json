@@ -1,0 +1,18 @@
+[
+  {
+    "File": "signup-quarantine-derivative-disabled.sql",
+    "SHA256": "2D9D359EBEBEF0C4A0D8CEFF55001CA0E171348E368D9078E5F2F14C67F9DC0C"
+  },
+  {
+    "File": "private_collector_offline.py",
+    "SHA256": "D24F039C94447F063197BC7A70F1DCB1690AE876CA7DE4CF447A7D3E98815697"
+  },
+  {
+    "File": "signup_quarantine_design.py",
+    "SHA256": "5EE93764F95508E2617997DAF2901E85A2473B24EDBD9A1F9554EEFCB554AB3E"
+  },
+  {
+    "File": "test_signup_quarantine_design.py",
+    "SHA256": "8993BE3B6B721AEFAF2D26C167891E3BB8C2D5E0E866FE6194166D8133DEBED9"
+  }
+]

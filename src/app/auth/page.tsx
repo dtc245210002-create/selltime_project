@@ -49,7 +49,10 @@ export default function AccountPage() {
       });
       const result = await response.json();
       if (!response.ok) {
-        if (operation === "session") setIdentity(null);
+        if (operation === "session") {
+          setIdentity(null);
+          return;
+        }
         throw new Error(result.error || "Thao tác không thành công.");
       }
       if (operation === "logout") {

@@ -800,7 +800,10 @@ export function MessagesTab({
 
         <button
           type="button"
-          onClick={() => alert("Đang mở bản đồ Google Maps chỉ đường tới " + activeConv.shift.location_address)}
+          onClick={() => {
+            const query = encodeURIComponent(activeConv.shift.location_address);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
+          }}
           className="w-full py-2 bg-slate-950 hover:bg-slate-850 text-slate-300 border border-slate-800 rounded-md font-medium text-xs transition-colors flex items-center justify-center gap-1.5"
         >
           <MapPin className="w-3.5 h-3.5 text-slate-500" />
